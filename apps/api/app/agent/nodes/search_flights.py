@@ -6,7 +6,9 @@ from collections.abc import Callable
 
 from mcp_tools.flights.airports.base import AirportCodeResolver
 
-from app.agent.state import AgentState, GraphStatus, trip_request_from_state
+from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
+from app.agent.orchestration.tool_runner import ToolExecuteResult, run_bounded_tool_node
+from app.agent.state import AgentState, trip_request_from_state
 from app.tools.flights import FlightTool
 from app.tools.flights_request import build_flight_search_request
 
@@ -14,6 +16,7 @@ from app.tools.flights_request import build_flight_search_request
 def build_search_flights_node(
     flight_tool: FlightTool,
     airport_resolver: AirportCodeResolver,
+    limiter: ToolConcurrencyLimiter,
 ) -> Callable[[AgentState], AgentState]:
     """Create a flight search node bound to the provided tool."""
 
@@ -21,15 +24,23 @@ def build_search_flights_node(
         """Fetch normalized flight offers for validated complete requirements."""
         trip_request = trip_request_from_state(state)
         if trip_request is None:
-            return {"status": GraphStatus.COMPLETE.value}
+            return {}
 
-        request = build_flight_search_request(trip_request, airport_resolver)
-        result, metadata = flight_tool.search_flights(request)
+        def execute() -> ToolExecuteResult:
+            request = build_flight_search_request(trip_request, airport_resolver)
+            result, metadata = flight_tool.search_flights(request)
+            return (
+                {
+                    "flight_search": result.model_dump(mode="json"),
+                    "flight_tool_metadata": metadata.model_dump(mode="json"),
+                },
+                metadata.provider,
+            )
 
-        return {
-            "flight_search": result.model_dump(mode="json"),
-            "flight_tool_metadata": metadata.model_dump(mode="json"),
-            "status": GraphStatus.COMPLETE.value,
-        }
+        return run_bounded_tool_node(
+            tool_name="search_flights",
+            limiter=limiter,
+            execute=execute,
+        )
 
     return search_flights

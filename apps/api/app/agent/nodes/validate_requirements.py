@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from app.agent.state import AgentState, GraphStatus, trip_request_from_state
 from app.domain.trip_request import (
     REQUIRED_SCHEDULE_FIELDS,
@@ -42,7 +44,10 @@ def validate_requirements(state: AgentState) -> AgentState:
         else GraphStatus.AWAITING_USER.value
     )
 
-    return {
+    updates: AgentState = {
         "validation": validation.model_dump(mode="json"),
         "status": status,
     }
+    if validation.is_complete:
+        updates["tool_fan_out_started_at"] = datetime.now(UTC).isoformat()
+    return updates

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from mcp_tools.currency.schemas import CurrencyConversionResult, CurrencyToolMetadata
 from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
@@ -16,7 +16,18 @@ from mcp_tools.places.schemas import (
 )
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
+from app.agent.orchestration.schemas import (
+    AggregateRunStatus,
+    ToolOrchestrationSummary,
+)
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+
+
+def _merge_tool_orchestration(
+    left: list[dict[str, object]] | None,
+    right: list[dict[str, object]] | None,
+) -> list[dict[str, object]]:
+    return (left or []) + (right or [])
 
 
 class GraphStatus(StrEnum):
@@ -54,6 +65,10 @@ class AgentState(TypedDict, total=False):
     attraction_tool_metadata: dict[str, object] | None
     currency_conversion: dict[str, object] | None
     currency_tool_metadata: dict[str, object] | None
+    tool_orchestration: Annotated[list[dict[str, object]], _merge_tool_orchestration]
+    tool_fan_out_started_at: str | None
+    aggregate_run_status: str | None
+    tool_orchestration_summary: dict[str, object] | None
     status: str
 
 
@@ -184,3 +199,21 @@ def currency_metadata_from_state(state: AgentState) -> CurrencyToolMetadata | No
     if raw is None:
         return None
     return CurrencyToolMetadata.model_validate(raw)
+
+
+def aggregate_run_status_from_state(
+    state: AgentState,
+) -> AggregateRunStatus | None:
+    raw = state.get("aggregate_run_status")
+    if raw is None:
+        return None
+    return AggregateRunStatus(raw)
+
+
+def orchestration_summary_from_state(
+    state: AgentState,
+) -> ToolOrchestrationSummary | None:
+    raw = state.get("tool_orchestration_summary")
+    if raw is None:
+        return None
+    return ToolOrchestrationSummary.model_validate(raw)

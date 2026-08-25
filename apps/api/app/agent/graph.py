@@ -12,18 +12,25 @@ from mcp_tools.distance.locations.base import LocationResolver
 from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.hotels.locations.base import CityCodeResolver
 
+from app.agent.nodes.aggregate_independent_tools import (
+    build_aggregate_independent_tools_node,
+)
 from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.convert_currency import build_convert_currency_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
+from app.agent.nodes.finalize_run import build_finalize_run_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
 from app.agent.nodes.search_attractions import build_search_attractions_node
 from app.agent.nodes.search_flights import build_search_flights_node
 from app.agent.nodes.search_hotels import build_search_hotels_node
 from app.agent.nodes.search_restaurants import build_search_restaurants_node
 from app.agent.nodes.validate_requirements import validate_requirements
+from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
+from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
 from app.agent.routing import route_after_validation
 from app.agent.state import AgentInput, AgentState
+from app.core.config import Settings, settings
 from app.llm.base import LLMAdapter
 from app.llm.factory import build_llm_adapter
 from app.tools.attractions import AttractionTool
@@ -54,8 +61,11 @@ def build_trip_planner_graph(
     restaurant_tool: RestaurantTool | None = None,
     attraction_tool: AttractionTool | None = None,
     currency_tool: CurrencyTool | None = None,
+    tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
+    config: Settings | None = None,
 ) -> StateGraph[AgentState, None, AgentInput, AgentState]:
-    """Construct extract → validate → ask_user/weather/flights/hotels/places graph."""
+    """Construct extract → validate → parallel tool fan-out graph."""
+    cfg = config or settings
     adapter = llm_adapter or build_llm_adapter()
     weather = weather_tool or WeatherTool()
     flights = flight_tool or build_flight_tool()
@@ -67,6 +77,9 @@ def build_trip_planner_graph(
     restaurants = restaurant_tool or build_restaurant_tool()
     attractions = attraction_tool or build_attraction_tool()
     currency = currency_tool or build_currency_tool()
+    limiter = tool_concurrency_limiter or ToolConcurrencyLimiter(
+        cfg.agent_tool_concurrency_limit
+    )
 
     builder: StateGraph[AgentState, None, AgentInput, AgentState] = StateGraph(
         AgentState,
@@ -80,51 +93,53 @@ def build_trip_planner_graph(
     builder.add_node("ask_user", ask_user)
     builder.add_node(
         "fetch_weather",
-        cast(Any, build_fetch_weather_node(weather)),
+        cast(Any, build_fetch_weather_node(weather, limiter)),
     )
     builder.add_node(
         "search_flights",
-        cast(Any, build_search_flights_node(flights, resolver)),
+        cast(Any, build_search_flights_node(flights, resolver, limiter)),
     )
     builder.add_node(
         "search_hotels",
-        cast(Any, build_search_hotels_node(hotels, city)),
+        cast(Any, build_search_hotels_node(hotels, city, limiter)),
     )
     builder.add_node(
         "get_distance_matrix",
-        cast(Any, build_get_distance_matrix_node(distance, locations)),
+        cast(Any, build_get_distance_matrix_node(distance, locations, limiter)),
     )
     builder.add_node(
         "search_restaurants",
-        cast(Any, build_search_restaurants_node(restaurants, locations)),
+        cast(Any, build_search_restaurants_node(restaurants, locations, limiter)),
     )
     builder.add_node(
         "search_attractions",
-        cast(Any, build_search_attractions_node(attractions, locations)),
+        cast(Any, build_search_attractions_node(attractions, locations, limiter)),
+    )
+    builder.add_node(
+        "aggregate_independent_tools",
+        cast(Any, build_aggregate_independent_tools_node()),
     )
     builder.add_node(
         "convert_currency",
-        cast(Any, build_convert_currency_node(currency)),
+        cast(Any, build_convert_currency_node(currency, limiter)),
     )
+    builder.add_node("finalize_run", cast(Any, build_finalize_run_node()))
 
     builder.add_edge(START, "extract_requirements")
     builder.add_edge("extract_requirements", "validate_requirements")
     builder.add_conditional_edges(
         "validate_requirements",
         route_after_validation,
-        {
-            "fetch_weather": "fetch_weather",
-            "ask_user": "ask_user",
-        },
+        ["ask_user"],
     )
     builder.add_edge("ask_user", END)
-    builder.add_edge("fetch_weather", "search_flights")
-    builder.add_edge("search_flights", "search_hotels")
-    builder.add_edge("search_hotels", "get_distance_matrix")
-    builder.add_edge("get_distance_matrix", "search_restaurants")
-    builder.add_edge("search_restaurants", "search_attractions")
-    builder.add_edge("search_attractions", "convert_currency")
-    builder.add_edge("convert_currency", END)
+
+    for node_name in INDEPENDENT_TOOL_NODE_NAMES:
+        builder.add_edge(node_name, "aggregate_independent_tools")
+
+    builder.add_edge("aggregate_independent_tools", "convert_currency")
+    builder.add_edge("convert_currency", "finalize_run")
+    builder.add_edge("finalize_run", END)
     return builder
 
 
@@ -141,6 +156,8 @@ def compile_trip_planner_graph(
     restaurant_tool: RestaurantTool | None = None,
     attraction_tool: AttractionTool | None = None,
     currency_tool: CurrencyTool | None = None,
+    tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
+    config: Settings | None = None,
 ) -> CompiledTripPlannerGraph:
     """Compile the trip planner graph with an optional checkpoint backend."""
     saver = checkpointer or InMemorySaver()
@@ -156,6 +173,8 @@ def compile_trip_planner_graph(
         restaurant_tool=restaurant_tool,
         attraction_tool=attraction_tool,
         currency_tool=currency_tool,
+        tool_concurrency_limiter=tool_concurrency_limiter,
+        config=config,
     ).compile(
         checkpointer=saver,
     )

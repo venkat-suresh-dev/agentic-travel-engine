@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F / 3G)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,9 +10,54 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → search_restaurants → search_attractions → convert_currency → END
-  └── incomplete → ask_user → END
+  ├── incomplete → ask_user → END
+  └── complete → parallel independent tool fan-out
+         ├── fetch_weather
+         ├── search_flights
+         ├── search_hotels
+         ├── get_distance_matrix
+         ├── search_restaurants
+         └── search_attractions
+         ↓
+     aggregate_independent_tools
+         ↓
+     convert_currency   (depends on flight_search)
+         ↓
+     finalize_run
+         ↓
+        END
 ```
+
+## Parallel orchestration (Phase 3G)
+
+After validation reports complete requirements, six independent travel-data tools fan out concurrently via LangGraph `Send` packets. Each tool writes only to its own typed state fields. A barrier node (`aggregate_independent_tools`) waits for all parallel branches before dependency-aware currency conversion runs.
+
+**Concurrency limit:** `AGENT_TOOL_CONCURRENCY_LIMIT` (default `4`) bounds simultaneous tool executions through a shared `ToolConcurrencyLimiter` semaphore. This protects external providers from unbounded bursts without replacing each tool's own timeout/retry/cache behavior.
+
+**Currency dependency:** `convert_currency` runs after the parallel fan-out because it requires the lowest flight offer from `flight_search`. It is not forced into the concurrent batch.
+
+**Distance dependency:** `get_distance_matrix` runs in parallel because it only needs validated `departure_city` and `destination` from `trip_request` (resolved via `LocationResolver`).
+
+### Aggregate run status
+
+| Status | Meaning |
+| --- | --- |
+| `success` | All executed tools returned live/cached results |
+| `partial` | One or more tools unavailable, but at least one succeeded |
+| `failed` | All independent tools failed; no usable tool facts |
+
+The public API contract (`complete` / `needs_clarification` / `failed`) is unchanged. Tool-level partial availability is represented inside the completed result via `aggregate_run_status` and per-tool `data_status` fields.
+
+### Failure isolation
+
+A single provider failure does not fail the entire run. Unavailable tool results are preserved alongside successful results. Unexpected tool exceptions are caught at the node boundary and recorded in `tool_orchestration` without aborting sibling branches.
+
+### Orchestration metadata
+
+`tool_orchestration` (per-tool records merged via reducer) and `tool_orchestration_summary` capture:
+
+- `tool_name`, `provider`, `started_at`, `completed_at`, `duration_ms`, `status`
+- run-level `aggregate_run_status` and `run_id` (injected at the service boundary)
 
 ## State model
 
@@ -42,6 +87,9 @@ Important fields:
 | `attraction_tool_metadata` | Tool-call provenance for attractions |
 | `currency_conversion` | Normalized reference-rate conversion from the MCP currency tool |
 | `currency_tool_metadata` | Tool-call provenance for currency conversion |
+| `tool_orchestration` | Per-tool execution records (reducer-merged) |
+| `aggregate_run_status` | `success` / `partial` / `failed` aggregate outcome |
+| `tool_orchestration_summary` | Run-level orchestration summary |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -62,70 +110,39 @@ Structured domain models live in `app/domain/trip_request.py`.
 - Required fields: destination, travelers, budget, departure city, and either duration or start date.
 - Does **not** invent missing values.
 
-### `fetch_weather` (Phase 3A)
+### Parallel independent tools (Phase 3G)
 
-- Invoked only after validation reports complete requirements.
-- Builds a deterministic `WeatherForecastRequest` from the validated `TripRequest`.
-- Calls `WeatherTool` → `WeatherService` → Open-Meteo via the MCP tool package.
-- Stores normalized forecast data and tool metadata in graph state.
-- Does **not** let the LLM invent weather facts.
+The following nodes run concurrently after validation when requirements are complete:
 
-### `search_flights` (Phase 3B)
+- `fetch_weather` — Open-Meteo forecast via `WeatherTool`
+- `search_flights` — Amadeus flight offers via `FlightTool`
+- `search_hotels` — Amadeus hotel search via `HotelTool`
+- `get_distance_matrix` — OpenRouteService matrix via `DistanceTool`
+- `search_restaurants` — Google Places via `RestaurantTool`
+- `search_attractions` — Google Places via `AttractionTool`
 
-- Invoked only after weather fetch on the complete-request path.
-- Builds a deterministic `FlightSearchRequest` from validated `TripRequest` fields.
-- Resolves departure city and destination to IATA codes via `AirportCodeResolver`.
-- Calls `FlightTool` → `FlightService` → Amadeus Flight Offers Search.
-- Stores normalized offers and tool metadata in graph state.
-- Results are search snapshots only — not booking guarantees.
-- Does **not** let the LLM invent flight prices or schedules.
+Each node uses `run_bounded_tool_node` for concurrency limiting and orchestration tracing. Per-tool timeout/retry/cache/degraded-mode behavior remains inside each MCP service.
 
-### `search_hotels` (Phase 3C)
+### `aggregate_independent_tools` (Phase 3G)
 
-- Invoked only after flight search on the complete-request path.
-- Builds a deterministic `HotelSearchRequest` from validated `TripRequest` fields.
-- Resolves destination to an IATA city code via `CityCodeResolver`.
-- Calls `HotelTool` → `HotelService` → Amadeus Hotel List + Hotel Search.
-- Stores normalized hotel offers and tool metadata in graph state.
-- Results are search snapshots only — not booking or availability guarantees.
-See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
+- Barrier node after all parallel branches complete.
+- Computes interim `aggregate_run_status` from independent tool outcomes.
+- Does **not** merge tool metadata across tools.
 
-### `get_distance_matrix` (Phase 3D)
+### `convert_currency` (Phase 3F / dependency-aware in 3G)
 
-- Invoked only after hotel search on the complete-request path.
-- Builds a deterministic `DistanceMatrixRequest` from validated `departure_city` and `destination`.
-- Resolves both locations to coordinates via `LocationResolver` (Open-Meteo geocoding).
-- Calls `DistanceTool` → `DistanceService` → OpenRouteService Matrix API.
-- Stores normalized route facts (`distance_meters`, `duration_seconds`) and tool metadata in graph state.
-- Currently supplies a 1×1 departure→destination matrix only; no invented stops or attractions.
-- Does **not** let the LLM invent travel times or distances.
-
-### `search_restaurants` (Phase 3E)
-
-- Invoked only after distance lookup on the complete-request path.
-- Builds a deterministic `RestaurantSearchRequest` from the validated destination.
-- Resolves destination coordinates via `LocationResolver` (Open-Meteo geocoding).
-- Calls `RestaurantTool` → `PlacesService` → Google Places Text Search (New).
-- Stores normalized restaurant facts and tool metadata in graph state.
-- Does **not** let the LLM invent ratings, prices, or hours.
-
-### `search_attractions` (Phase 3E)
-
-- Invoked only after restaurant search on the complete-request path.
-- Builds a deterministic `AttractionSearchRequest` from the validated destination.
-- Resolves destination coordinates via `LocationResolver`.
-- Calls `AttractionTool` → `PlacesService` → Google Places Nearby Search (New).
-- Stores normalized attraction facts and tool metadata in graph state.
-- Does **not** let the LLM invent venues, ratings, or hours.
-
-### `convert_currency` (Phase 3F)
-
-- Invoked only after attraction search on the complete-request path.
+- Invoked only after independent tools aggregate.
 - Builds a deterministic conversion plan from the lowest-priced flight offer and `trip_request.budget_currency`.
 - Calls `CurrencyTool` → `CurrencyService` → Frankfurter v2 reference rates via the MCP tool package.
 - Stores converted representation and tool metadata separately; original flight offer prices remain unchanged.
 - Skips provider access for same-currency conversion (`rate = 1`, `source = deterministic`).
 - Does **not** let the LLM invent exchange rates or perform authoritative accounting.
+
+### `finalize_run` (Phase 3G)
+
+- Sets final `aggregate_run_status` including currency outcome.
+- Builds `tool_orchestration_summary` with deterministic tool record ordering.
+- Sets `status = complete`.
 
 ### `ask_user`
 
@@ -136,134 +153,25 @@ See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-bookin
 
 `app/agent/routing.py` contains `route_after_validation`, which routes:
 
-- complete requirements → `fetch_weather`
+- complete requirements → parallel fan-out via `Send` packets
 - incomplete requirements → `ask_user`
 
-Routing is tested independently from node implementations.
+No external tool runs before requirements are deterministically validated as complete.
 
-## Resume behavior
+## Tool boundary
 
-The graph is compiled with LangGraph's `InMemorySaver` checkpointer for thread-scoped state.
-
-1. An incomplete request ends in `awaiting_user` with structured clarification metadata.
-2. A later invocation with the same `thread_id` and new `user_clarification` resumes from the checkpoint.
-3. `extract_requirements` merges the clarification into the existing `trip_request` without discarding prior values. Merge semantics are implemented in `app/agent/trip_request_merge.py` and preserve existing non-null fields unless the new extraction explicitly supplies a replacement value.
-
-`TripPlannerAgentService` in `app/agent/service.py` exposes:
-
-- `start(user_request, thread_id=...)`
-- `resume(thread_id, user_clarification)`
-- `get_state(thread_id)`
-
-Production persistence should move to a durable checkpointer (for example Postgres) in a later phase. Redis is intentionally not introduced here.
-
-## API exposure (Phase 2C)
-
-Authenticated HTTP endpoints in `app/api/routes/agent.py` expose the ask_user/resume lifecycle:
-
-- `POST /api/agent/runs` — start a planning run
-- `POST /api/agent/runs/{run_id}/messages` — submit clarification and resume
-
-`AgentRunService` in `app/services/agent_runs.py` maps graph results to API-safe responses and enforces per-user run ownership through an in-memory `AgentRunRegistry`. Run IDs correspond to LangGraph `thread_id` values.
-
-Current limitations:
-
-- Run ownership and graph checkpoints are stored in process memory only.
-- Restarting the API process clears all in-flight runs.
-- Extraction failures return `status: "failed"` in the response body (`201` for new runs, `200` for clarifications) rather than leaking internal errors.
-- Durable conversation persistence belongs to a later phase.
-
-## Weather tool boundary (Phase 3A)
+Application tools in `app/tools/` wrap MCP package services. The graph never calls MCP servers directly.
 
 ```text
-fetch_weather node
+LangGraph node
     ↓
-WeatherTool (apps/api)
+app/tools/*Tool
     ↓
-WeatherService (packages/mcp-tools)
+mcp_tools/*/service
     ↓
-MCP get_weather_forecast
-    ↓
-Open-Meteo geocoding + forecast
+provider
 ```
-
-See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and degraded-mode behavior.
-
-## Flight tool boundary (Phase 3B)
-
-```text
-search_flights node
-    ↓
-FlightTool (apps/api)
-    ↓
-FlightService (packages/mcp-tools)
-    ↓
-MCP search_flights
-    ↓
-Amadeus auth + Flight Offers Search
-```
-
-See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
-
-## Hotel tool boundary (Phase 3C)
-
-```text
-search_hotels node
-    ↓
-HotelTool (apps/api)
-    ↓
-HotelService (packages/mcp-tools)
-    ↓
-MCP search_hotels
-    ↓
-Amadeus auth + Hotel List + Hotel Search
-```
-
-See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
-
-## Distance tool boundary (Phase 3D)
-
-```text
-get_distance_matrix node
-    ↓
-DistanceTool (apps/api)
-    ↓
-DistanceService (packages/mcp-tools)
-    ↓
-MCP get_distance_matrix
-    ↓
-OpenRouteService Matrix API + Open-Meteo geocoding
-```
-
-See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and normalized units.
-
-## Places tool boundary (Phase 3E)
-
-```text
-search_restaurants / search_attractions nodes
-    ↓
-RestaurantTool / AttractionTool (apps/api)
-    ↓
-PlacesService (packages/mcp-tools)
-    ↓
-MCP search_restaurants / search_attractions
-    ↓
-Google Places API (New) + Open-Meteo geocoding
-```
-
-See `packages/mcp-tools/README.md` for field masks, cache, retry, and no-booking semantics.
-
-## Deferred to later phases
-
-- Additional MCP tools (currency conversion)
-- RAG, budget engine, itinerary generation, critic loop
-- SSE streaming endpoints
-- Langfuse tracing
-- Production checkpoint storage
-- Redis-backed weather cache
 
 ## Dependencies
 
 - `langgraph==1.2.11`
-- `anthropic==1.0.0` (structured extraction via `messages.parse`)
-- `mcp>=2.0.0` (weather MCP server in `packages/mcp-tools`)

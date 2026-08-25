@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from mcp_tools.weather.exceptions import (
+    WeatherMalformedResponseError,
+    WeatherProviderError,
+)
 from mcp_tools.weather.geocoding.base import GeocodedLocation
 from mcp_tools.weather.schemas import DailyForecast, WeatherForecastRequest
 
@@ -17,11 +21,19 @@ class FakeGeocodingProvider:
 
 
 class FakeWeatherProvider:
+    def __init__(self, *, should_fail: bool = False, malformed: bool = False) -> None:
+        self.should_fail = should_fail
+        self.malformed = malformed
+
     def fetch_forecast(
         self,
         request: WeatherForecastRequest,
         location: GeocodedLocation,
     ) -> list[DailyForecast]:
+        if self.should_fail:
+            raise WeatherProviderError("simulated provider failure")
+        if self.malformed:
+            raise WeatherMalformedResponseError("simulated malformed response")
         return [
             DailyForecast(
                 date=request.start_date,

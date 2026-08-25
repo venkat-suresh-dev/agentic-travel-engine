@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     frankfurter_base_url: str = "https://api.frankfurter.dev"
     currency_request_timeout_seconds: float = 5.0
     currency_cache_ttl_seconds: int = 86_400
+    agent_tool_concurrency_limit: int = 4
 
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod

@@ -9,6 +9,7 @@ from app.agent.graph import compile_trip_planner_graph
 from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.validate_requirements import validate_requirements
+from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
 from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
@@ -177,7 +178,7 @@ def test_route_after_validation_routes_incomplete_to_ask_user() -> None:
     assert route_after_validation(state) == "ask_user"
 
 
-def test_route_after_validation_routes_complete_to_fetch_weather() -> None:
+def test_route_after_validation_routes_complete_to_parallel_fan_out() -> None:
     state: AgentState = {
         "validation": ValidationResult(
             is_complete=True,
@@ -185,7 +186,10 @@ def test_route_after_validation_routes_complete_to_fetch_weather() -> None:
         ).model_dump(mode="json"),
     }
 
-    assert route_after_validation(state) == "fetch_weather"
+    routes = route_after_validation(state)
+    assert isinstance(routes, list)
+    assert len(routes) == len(INDEPENDENT_TOOL_NODE_NAMES)
+    assert {route.node for route in routes} == set(INDEPENDENT_TOOL_NODE_NAMES)
 
 
 def test_graph_complete_request_reaches_terminal_state_without_ask_user(

@@ -21,6 +21,7 @@ pytest_plugins = [
     "tests.fakes.distance",
     "tests.fakes.places",
     "tests.fakes.currency",
+    "tests.fakes.delayed_tools",
     "tests.fakes.llm_fixtures",
 ]
 

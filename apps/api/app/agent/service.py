@@ -24,10 +24,16 @@ from mcp_tools.places.schemas import (
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
 from app.agent.graph import CompiledTripPlannerGraph, compile_trip_planner_graph
+from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
+from app.agent.orchestration.schemas import (
+    AggregateRunStatus,
+    ToolOrchestrationSummary,
+)
 from app.agent.state import (
     AgentInput,
     AgentState,
     GraphStatus,
+    aggregate_run_status_from_state,
     attraction_metadata_from_state,
     attraction_search_from_state,
     clarification_from_state,
@@ -39,6 +45,7 @@ from app.agent.state import (
     flight_search_from_state,
     hotel_metadata_from_state,
     hotel_search_from_state,
+    orchestration_summary_from_state,
     restaurant_metadata_from_state,
     restaurant_search_from_state,
     trip_request_from_state,
@@ -80,6 +87,8 @@ class TripPlannerRunResult:
     attraction_tool_metadata: PlacesToolMetadata | None
     currency_conversion: CurrencyConversionResult | None
     currency_tool_metadata: CurrencyToolMetadata | None
+    aggregate_run_status: AggregateRunStatus | None
+    tool_orchestration_summary: ToolOrchestrationSummary | None
     state: AgentState
 
 
@@ -101,6 +110,7 @@ class TripPlannerAgentService:
         restaurant_tool: RestaurantTool | None = None,
         attraction_tool: AttractionTool | None = None,
         currency_tool: CurrencyTool | None = None,
+        tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
@@ -116,6 +126,7 @@ class TripPlannerAgentService:
             restaurant_tool=restaurant_tool,
             attraction_tool=attraction_tool,
             currency_tool=currency_tool,
+            tool_concurrency_limiter=tool_concurrency_limiter,
         )
 
     def start(
@@ -157,6 +168,9 @@ class TripPlannerAgentService:
 
     def _to_result(self, thread_id: str, state: AgentState) -> TripPlannerRunResult:
         status_value = state.get("status", GraphStatus.EXTRACTING.value)
+        summary = orchestration_summary_from_state(state)
+        if summary is not None:
+            summary = summary.model_copy(update={"run_id": thread_id})
         return TripPlannerRunResult(
             thread_id=thread_id,
             status=GraphStatus(status_value),
@@ -177,5 +191,7 @@ class TripPlannerAgentService:
             attraction_tool_metadata=attraction_metadata_from_state(state),
             currency_conversion=currency_conversion_from_state(state),
             currency_tool_metadata=currency_metadata_from_state(state),
+            aggregate_run_status=aggregate_run_status_from_state(state),
+            tool_orchestration_summary=summary,
             state=state,
         )
