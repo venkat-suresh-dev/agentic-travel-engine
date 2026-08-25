@@ -16,6 +16,7 @@ from app.agent.nodes.aggregate_independent_tools import (
     build_aggregate_independent_tools_node,
 )
 from app.agent.nodes.ask_user import ask_user
+from app.agent.nodes.compute_budget import build_compute_budget_node
 from app.agent.nodes.convert_currency import build_convert_currency_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
@@ -130,6 +131,7 @@ def build_trip_planner_graph(
         "convert_currency",
         cast(Any, build_convert_currency_node(currency, limiter)),
     )
+    builder.add_node("compute_budget", cast(Any, build_compute_budget_node()))
     builder.add_node("finalize_run", cast(Any, build_finalize_run_node()))
 
     builder.add_edge(START, "extract_requirements")
@@ -150,7 +152,8 @@ def build_trip_planner_graph(
         builder.add_edge(node_name, "aggregate_independent_tools")
 
     builder.add_edge("aggregate_independent_tools", "convert_currency")
-    builder.add_edge("convert_currency", "finalize_run")
+    builder.add_edge("convert_currency", "compute_budget")
+    builder.add_edge("compute_budget", "finalize_run")
     builder.add_edge("finalize_run", END)
     return builder
 

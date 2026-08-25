@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F / 3G / 4)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F / 3G / 4 / 5A)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -24,6 +24,8 @@ validate_requirements
      aggregate_independent_tools
          ↓
      convert_currency   (depends on flight_search)
+         ↓
+     compute_budget     (deterministic; authoritative totals)
          ↓
      finalize_run
          ↓

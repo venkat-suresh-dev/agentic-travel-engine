@@ -36,6 +36,7 @@ from app.agent.state import (
     aggregate_run_status_from_state,
     attraction_metadata_from_state,
     attraction_search_from_state,
+    budget_result_from_state,
     clarification_from_state,
     currency_conversion_from_state,
     currency_metadata_from_state,
@@ -53,6 +54,7 @@ from app.agent.state import (
     weather_forecast_from_state,
     weather_metadata_from_state,
 )
+from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.llm.base import LLMAdapter
 from app.tools.attractions import AttractionTool
@@ -87,6 +89,7 @@ class TripPlannerRunResult:
     attraction_tool_metadata: PlacesToolMetadata | None
     currency_conversion: CurrencyConversionResult | None
     currency_tool_metadata: CurrencyToolMetadata | None
+    budget_result: BudgetResult | None
     aggregate_run_status: AggregateRunStatus | None
     tool_orchestration_summary: ToolOrchestrationSummary | None
     state: AgentState
@@ -191,6 +194,7 @@ class TripPlannerAgentService:
             attraction_tool_metadata=attraction_metadata_from_state(state),
             currency_conversion=currency_conversion_from_state(state),
             currency_tool_metadata=currency_metadata_from_state(state),
+            budget_result=budget_result_from_state(state),
             aggregate_run_status=aggregate_run_status_from_state(state),
             tool_orchestration_summary=summary,
             state=state,

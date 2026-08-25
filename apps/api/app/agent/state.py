@@ -20,6 +20,7 @@ from app.agent.orchestration.schemas import (
     AggregateRunStatus,
     ToolOrchestrationSummary,
 )
+from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 
 
@@ -71,6 +72,7 @@ class AgentState(TypedDict, total=False):
     tool_orchestration_summary: dict[str, object] | None
     retrieved_context: dict[str, object] | None
     retrieved_context_formatted: str | None
+    budget_result: dict[str, object] | None
     status: str
 
 
@@ -219,3 +221,10 @@ def orchestration_summary_from_state(
     if raw is None:
         return None
     return ToolOrchestrationSummary.model_validate(raw)
+
+
+def budget_result_from_state(state: AgentState) -> BudgetResult | None:
+    raw = state.get("budget_result")
+    if raw is None:
+        return None
+    return BudgetResult.model_validate(raw)
