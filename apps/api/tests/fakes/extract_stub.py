@@ -1,4 +1,4 @@
-"""Deterministic placeholder requirement extraction for Phase 2A."""
+"""Deterministic extraction stub used by test doubles."""
 
 from __future__ import annotations
 
@@ -29,7 +29,11 @@ _TRIP_TYPE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _PREFERENCE_PATTERN = re.compile(
-    r"\bpreferences?:\s*([^.]+)",
+    r"\b(?:prefer|preferences?:)\s*([^.]+)",
+    re.IGNORECASE,
+)
+_DATE_RANGE_PATTERN = re.compile(
+    r"\bfrom\s+([A-Za-z]+\s+\d{1,2})\s+to\s+([A-Za-z]+\s+\d{1,2})\b",
     re.IGNORECASE,
 )
 

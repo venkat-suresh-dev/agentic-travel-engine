@@ -27,6 +27,11 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3002"]
     )
 
+    llm_provider: str = "anthropic"
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-20250514"
+    llm_max_tokens: int = 1024
+
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod
     def parse_authorized_parties(cls, value: object) -> list[str]:

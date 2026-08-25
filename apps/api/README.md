@@ -131,4 +131,32 @@ service = TripPlannerAgentService()
 result = service.start("Plan a 5-day trip to Dubai for 2 people.")
 ```
 
-Phase 2A uses deterministic placeholder extraction. Real LLM-based extraction is deferred to Phase 2B.
+## LLM extraction (Phase 2B)
+
+Requirement extraction uses Anthropic Claude through the provider-agnostic `LLMAdapter` interface in `app/llm/`.
+
+### Configuration
+
+Set these values in `apps/api/.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `LLM_PROVIDER` | LLM provider identifier (default: `anthropic`) |
+| `ANTHROPIC_API_KEY` | Server-side Anthropic API key |
+| `ANTHROPIC_MODEL` | Model name for structured extraction |
+| `LLM_MAX_TOKENS` | Maximum tokens for extraction responses |
+
+Never commit real API keys or expose them to the frontend.
+
+### Extraction responsibilities
+
+The LLM extracts structured `TripRequest` fields from natural-language input only.
+
+It is explicitly prohibited from:
+
+- inventing missing budget, dates, destinations, travelers, or preferences
+- calculating authoritative budgets
+- calling travel APIs or generating itineraries
+- deciding whether requirements are complete
+
+Deterministic validation in `validate_requirements` remains the source of truth for completeness.

@@ -36,10 +36,11 @@ Structured domain models live in `app/domain/trip_request.py`.
 
 ### `extract_requirements`
 
-- Converts free-form user text into structured `TripRequest` state.
-- Phase 2A uses a deterministic stub parser in `nodes/extract_stub.py`.
+- Converts free-form user text into structured `TripRequest` state through the
+  provider-agnostic `LLMAdapter` boundary.
+- Uses Anthropic structured output in production via `app/llm/anthropic.py`.
 - Merges clarification text into any previously extracted requirements.
-- Does **not** call an LLM or external APIs.
+- Does **not** perform validation, routing, or external travel API calls.
 
 ### `validate_requirements`
 
@@ -79,7 +80,7 @@ Production persistence should move to a durable checkpointer (for example Postgr
 
 ## Deferred to later phases
 
-- Real LLM-based requirement extraction (Phase 2B)
+- API exposure of ask_user/resume flow (Phase 2C)
 - MCP tools and external travel APIs
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
@@ -88,4 +89,5 @@ Production persistence should move to a durable checkpointer (for example Postgr
 
 ## Dependencies
 
-- `langgraph==1.2.11` (installed via `uv add langgraph`)
+- `langgraph==1.2.11`
+- `anthropic==1.0.0` (structured extraction via `messages.parse`)

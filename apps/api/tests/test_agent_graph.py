@@ -7,14 +7,16 @@ from decimal import Decimal
 import pytest
 from app.agent.graph import compile_trip_planner_graph
 from app.agent.nodes.ask_user import ask_user
-from app.agent.nodes.extract_requirements import extract_requirements
-from app.agent.nodes.extract_stub import extract_from_text
+from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from pydantic import ValidationError
+
+from tests.fakes.extract_stub import extract_from_text
+from tests.fakes.llm import FakeLLMAdapter
 
 COMPLETE_REQUEST = (
     "Plan a 5-day trip to Dubai for 2 people under ₹1,50,000, departing from Mumbai."
@@ -23,8 +25,13 @@ INCOMPLETE_REQUEST = "Plan a 5-day trip to Dubai for 2 people."
 
 
 @pytest.fixture
-def agent_service() -> TripPlannerAgentService:
-    return TripPlannerAgentService()
+def fake_adapter() -> FakeLLMAdapter:
+    return FakeLLMAdapter.from_stub()
+
+
+@pytest.fixture
+def agent_service(fake_adapter: FakeLLMAdapter) -> TripPlannerAgentService:
+    return TripPlannerAgentService(llm_adapter=fake_adapter)
 
 
 def test_trip_request_schema_rejects_invalid_state() -> None:
@@ -68,7 +75,10 @@ def test_extract_from_text_does_not_invent_missing_values() -> None:
     assert trip_request.departure_city is None
 
 
-def test_extract_requirements_node_is_independently_callable() -> None:
+def test_extract_requirements_node_is_independently_callable(
+    fake_adapter: FakeLLMAdapter,
+) -> None:
+    extract_requirements = build_extract_requirements_node(fake_adapter)
     state: AgentState = {"user_request": INCOMPLETE_REQUEST, "messages": []}
     updated = extract_requirements(state)
 
@@ -242,10 +252,12 @@ def test_graph_checkpoint_allows_state_lookup(
     assert checkpointed.trip_request.destination == "Dubai"
 
 
-def test_graph_is_integration_testable_end_to_end() -> None:
+def test_graph_is_integration_testable_end_to_end(
+    fake_adapter: FakeLLMAdapter,
+) -> None:
     from langchain_core.runnables import RunnableConfig
 
-    graph = compile_trip_planner_graph()
+    graph = compile_trip_planner_graph(llm_adapter=fake_adapter)
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)
 

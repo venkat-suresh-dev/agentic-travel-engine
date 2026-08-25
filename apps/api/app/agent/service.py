@@ -20,6 +20,7 @@ from app.agent.state import (
     validation_from_state,
 )
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.llm.base import LLMAdapter
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,10 +42,12 @@ class TripPlannerAgentService:
         self,
         graph: CompiledTripPlannerGraph | None = None,
         checkpointer: BaseCheckpointSaver[Any] | None = None,
+        llm_adapter: LLMAdapter | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
             checkpointer=self._checkpointer,
+            llm_adapter=llm_adapter,
         )
 
     def start(
