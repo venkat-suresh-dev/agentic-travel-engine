@@ -1,0 +1,21 @@
+{
+  "properties": [
+    {
+      "id": "stay-123",
+      "name": "Dubai Marina Hotel",
+      "location": {
+        "city": "Dubai",
+        "country": "AE",
+        "lat": 25.08,
+        "lng": 55.14
+      },
+      "starRating": 4.2,
+      "propertyType": "hotel",
+      "price": {
+        "currency": "INR",
+        "nightlyPrice": 8500,
+        "totalPrice": 42500
+      }
+    }
+  ]
+}

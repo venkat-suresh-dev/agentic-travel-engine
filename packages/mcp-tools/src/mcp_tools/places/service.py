@@ -33,10 +33,12 @@ class PlacesService:
         places_provider: PlacesProvider,
         cache: PlacesCache | None = None,
         retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS,
+        source: str = GOOGLE_PLACES_SOURCE,
     ) -> None:
         self._places_provider = places_provider
         self._cache = cache or PlacesCache()
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._source = source
 
     def search_restaurants(
         self,
@@ -51,7 +53,7 @@ class PlacesService:
             result = self._fetch_restaurants_with_resilience(request, cache_key)
         except PlacesValidationError as exc:
             result = RestaurantSearchResult.unavailable(
-                source=GOOGLE_PLACES_SOURCE,
+                source=self._source,
                 retrieved_at=datetime.now(UTC),
                 error_message=str(exc),
             )
@@ -64,7 +66,7 @@ class PlacesService:
                 cache_status = "hit"
             else:
                 result = RestaurantSearchResult.unavailable(
-                    source=GOOGLE_PLACES_SOURCE,
+                    source=self._source,
                     retrieved_at=datetime.now(UTC),
                     error_message=str(exc),
                 )
@@ -72,7 +74,7 @@ class PlacesService:
         latency_ms = (time.perf_counter() - started) * 1000
         metadata = PlacesToolMetadata(
             tool_name=RESTAURANT_TOOL_NAME,
-            provider=GOOGLE_PLACES_SOURCE,
+            provider=self._source,
             request_args=request_args,
             response_status=result.data_status,
             latency_ms=latency_ms,
@@ -94,7 +96,7 @@ class PlacesService:
             result = self._fetch_attractions_with_resilience(request, cache_key)
         except PlacesValidationError as exc:
             result = AttractionSearchResult.unavailable(
-                source=GOOGLE_PLACES_SOURCE,
+                source=self._source,
                 retrieved_at=datetime.now(UTC),
                 error_message=str(exc),
             )
@@ -107,7 +109,7 @@ class PlacesService:
                 cache_status = "hit"
             else:
                 result = AttractionSearchResult.unavailable(
-                    source=GOOGLE_PLACES_SOURCE,
+                    source=self._source,
                     retrieved_at=datetime.now(UTC),
                     error_message=str(exc),
                 )
@@ -115,7 +117,7 @@ class PlacesService:
         latency_ms = (time.perf_counter() - started) * 1000
         metadata = PlacesToolMetadata(
             tool_name=ATTRACTION_TOOL_NAME,
-            provider=GOOGLE_PLACES_SOURCE,
+            provider=self._source,
             request_args=request_args,
             response_status=result.data_status,
             latency_ms=latency_ms,
@@ -168,7 +170,7 @@ class PlacesService:
         restaurants = self._places_provider.search_restaurants(request)
         retrieved_at = datetime.now(UTC)
         result = RestaurantSearchResult(
-            source=GOOGLE_PLACES_SOURCE,
+            source=self._source,
             retrieved_at=retrieved_at,
             data_status=PlacesDataStatus.LIVE,
             restaurants=restaurants,
@@ -184,7 +186,7 @@ class PlacesService:
         attractions = self._places_provider.search_attractions(request)
         retrieved_at = datetime.now(UTC)
         result = AttractionSearchResult(
-            source=GOOGLE_PLACES_SOURCE,
+            source=self._source,
             retrieved_at=retrieved_at,
             data_status=PlacesDataStatus.LIVE,
             attractions=attractions,

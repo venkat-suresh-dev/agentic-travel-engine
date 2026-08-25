@@ -24,18 +24,24 @@ from app.auth.exceptions import (
 from app.core.config import settings
 from app.core.current_user import CurrentUser
 from app.db.models.trip import Trip
-from app.db.session import get_db
+from app.db.session import async_session_factory, get_db
 from app.llm.factory import build_llm_adapter
+from app.rag.factory import build_rag_retriever
 from app.services.agent_run_events import AgentRunEventBus
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
+from app.tools.attractions import AttractionTool
+from app.tools.currency import CurrencyTool
+from app.tools.currency_factory import build_currency_tool
 from app.tools.distance import DistanceTool
 from app.tools.distance_factory import build_distance_service, build_location_resolver
 from app.tools.flights import FlightTool
 from app.tools.flights_factory import build_airport_resolver, build_flight_service
 from app.tools.hotels import HotelTool
 from app.tools.hotels_factory import build_city_resolver, build_hotel_service
+from app.tools.places_factory import build_attraction_tool, build_restaurant_tool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 
 
@@ -137,7 +143,23 @@ def get_location_resolver() -> LocationResolver:
 
 
 @lru_cache
+def get_restaurant_tool() -> RestaurantTool:
+    return build_restaurant_tool()
+
+
+@lru_cache
+def get_attraction_tool() -> AttractionTool:
+    return build_attraction_tool()
+
+
+@lru_cache
+def get_currency_tool() -> CurrencyTool:
+    return build_currency_tool()
+
+
+@lru_cache
 def get_trip_planner_agent_service() -> TripPlannerAgentService:
+    rag_retriever = build_rag_retriever(async_session_factory)
     return TripPlannerAgentService(
         llm_adapter=build_llm_adapter(),
         weather_tool=get_weather_tool(),
@@ -147,6 +169,10 @@ def get_trip_planner_agent_service() -> TripPlannerAgentService:
         city_resolver=get_city_resolver(),
         distance_tool=get_distance_tool(),
         location_resolver=get_location_resolver(),
+        restaurant_tool=get_restaurant_tool(),
+        attraction_tool=get_attraction_tool(),
+        currency_tool=get_currency_tool(),
+        rag_retriever=rag_retriever,
     )
 
 

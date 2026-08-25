@@ -1,0 +1,22 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "place_id": "geoapify-rest-1",
+        "name": "Arabian Tea House",
+        "formatted": "Al Fahidi, Dubai, UAE",
+        "lat": 25.2631,
+        "lon": 55.2972,
+        "categories": ["catering.restaurant"],
+        "rating": 4.5,
+        "rating_count": 1200
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [55.2972, 25.2631]
+      }
+    }
+  ]
+}

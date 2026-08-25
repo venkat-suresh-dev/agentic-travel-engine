@@ -9,6 +9,8 @@ from mcp_tools.distance.providers.openrouteservice import (
     OpenRouteServiceDistanceProvider,
 )
 from mcp_tools.distance.service import DistanceService
+from mcp_tools.weather.geocoding.base import GeocodingProvider
+from mcp_tools.weather.geocoding.geoapify import GeoapifyGeocodingProvider
 from mcp_tools.weather.geocoding.open_meteo import OpenMeteoGeocodingProvider
 
 from app.core.config import Settings, settings
@@ -28,11 +30,21 @@ def build_distance_service(config: Settings | None = None) -> DistanceService:
     )
 
 
-def build_location_resolver(config: Settings | None = None) -> LocationResolver:
+def build_geocoding_provider(config: Settings | None = None) -> GeocodingProvider:
     cfg = config or settings
-    geocoding = OpenMeteoGeocodingProvider(
+    if cfg.geoapify_geocoding_enabled and cfg.geoapify_api_key:
+        return GeoapifyGeocodingProvider(
+            api_key=cfg.geoapify_api_key,
+            base_url=cfg.geoapify_base_url,
+            timeout_seconds=cfg.distance_request_timeout_seconds,
+        )
+    return OpenMeteoGeocodingProvider(
         timeout_seconds=cfg.distance_request_timeout_seconds,
     )
+
+
+def build_location_resolver(config: Settings | None = None) -> LocationResolver:
+    geocoding = build_geocoding_provider(config)
     return GeocodingLocationResolver(geocoding)
 
 

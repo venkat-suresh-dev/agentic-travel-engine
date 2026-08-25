@@ -1,0 +1,30 @@
+{
+  "search_metadata": {
+    "status": "Success"
+  },
+  "best_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": {
+            "name": "Chhatrapati Shivaji Maharaj International Airport",
+            "id": "BOM",
+            "time": "2026-09-01 06:30"
+          },
+          "arrival_airport": {
+            "name": "Dubai International Airport",
+            "id": "DXB",
+            "time": "2026-09-01 08:15"
+          },
+          "duration": 105,
+          "airplane": "Boeing 737",
+          "airline": "Emirates",
+          "flight_number": "EK 501"
+        }
+      ],
+      "total_duration": 105,
+      "price": 28500,
+      "type": "One way"
+    }
+  ]
+}

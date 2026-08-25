@@ -30,10 +30,12 @@ class HotelService:
         hotel_provider: HotelProvider,
         cache: HotelCache | None = None,
         retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS,
+        source: str = AMADEUS_SOURCE,
     ) -> None:
         self._hotel_provider = hotel_provider
         self._cache = cache or HotelCache()
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._source = source
 
     def search_hotels(
         self,
@@ -48,7 +50,7 @@ class HotelService:
             result = self._fetch_with_resilience(request, cache_key)
         except HotelValidationError as exc:
             result = HotelSearchResult.unavailable(
-                source=AMADEUS_SOURCE,
+                source=self._source,
                 retrieved_at=datetime.now(UTC),
                 error_message=str(exc),
             )
@@ -61,7 +63,7 @@ class HotelService:
                 cache_status = "hit"
             else:
                 result = HotelSearchResult.unavailable(
-                    source=AMADEUS_SOURCE,
+                    source=self._source,
                     retrieved_at=datetime.now(UTC),
                     error_message=str(exc),
                 )
@@ -69,7 +71,7 @@ class HotelService:
         latency_ms = (time.perf_counter() - started) * 1000
         metadata = HotelToolMetadata(
             tool_name=HOTEL_TOOL_NAME,
-            provider=AMADEUS_SOURCE,
+            provider=self._source,
             request_args=request_args,
             response_status=result.data_status,
             latency_ms=latency_ms,
@@ -104,7 +106,7 @@ class HotelService:
         hotels = self._hotel_provider.search_hotels(request)
         retrieved_at = datetime.now(UTC)
         result = HotelSearchResult(
-            source=AMADEUS_SOURCE,
+            source=self._source,
             retrieved_at=retrieved_at,
             data_status=HotelDataStatus.LIVE,
             hotels=hotels,

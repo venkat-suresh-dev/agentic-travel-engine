@@ -126,6 +126,7 @@ class TripPlannerAgentService:
         currency_tool: CurrencyTool | None = None,
         tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
         itinerary_composer: ItineraryComposer | None = None,
+        rag_retriever: object | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         resolved_composer = itinerary_composer or FakeItineraryComposer()
@@ -144,6 +145,7 @@ class TripPlannerAgentService:
             currency_tool=currency_tool,
             tool_concurrency_limiter=tool_concurrency_limiter,
             itinerary_composer=resolved_composer,
+            rag_retriever=rag_retriever,  # type: ignore[arg-type]
         )
 
     def start(

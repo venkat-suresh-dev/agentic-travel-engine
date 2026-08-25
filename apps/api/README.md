@@ -257,3 +257,50 @@ Raw LangGraph state and exception traces are never returned.
 - Another user cannot resume the same `run_id` (`403 Forbidden`).
 - Unknown `run_id` values return `404 Not Found`.
 - Run ownership and graph checkpoints are stored in process memory only. Restarting the API clears in-flight runs.
+
+## Local demo provider stack
+
+The recommended local demo configuration uses free-tier or sandbox providers while keeping CI/tests on deterministic fakes.
+
+| Capability | Demo provider | Config |
+|------------|---------------|--------|
+| LLM | Groq (`openai/gpt-oss-120b`) | `LLM_PROVIDER`, `GROQ_API_KEY`, `GROQ_MODEL` |
+| Embeddings / RAG | Gemini (`gemini-embedding-001`, 1536-dim) | `EMBEDDING_PROVIDER`, `GEMINI_API_KEY`, `RAG_EMBEDDING_DIMENSION` |
+| Flights | SerpApi Google Flights | `FLIGHTS_PROVIDER`, `SERPAPI_API_KEY`, `SERPAPI_FLIGHTS_ENGINE` |
+| Hotels | StayingAPI sandbox | `HOTELS_PROVIDER`, `STAYINGAPI_API_KEY`, `STAYINGAPI_ENVIRONMENT=sandbox` |
+| Places + geocoding | Geoapify | `PLACES_PROVIDER`, `GEOAPIFY_API_KEY`, `GEOAPIFY_GEOCODING_ENABLED` |
+| Weather | Open-Meteo | no key required |
+| Distance | OpenRouteService | `OPENROUTESERVICE_API_KEY` |
+| Currency | Frankfurter | no key required |
+| Auth | Clerk | `CLERK_SECRET_KEY` (API), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (web only) |
+
+Copy `apps/api/.env.example` to `apps/api/.env` and fill in server-side keys. Never commit `.env` or expose keys to the frontend bundle.
+
+Provider adapters live in:
+
+- `app/llm/` and `app/rag/embeddings/` (LLM + embeddings)
+- `packages/mcp-tools/src/mcp_tools/*/providers/` (travel data providers)
+- `app/tools/*_factory.py` (settings → provider selection)
+
+StayingAPI sandbox results are tagged with source `stayingapi-sandbox` and must not be presented as guaranteed live inventory.
+
+### Provider health (development only)
+
+Authenticated diagnostic endpoint (hidden outside development/demo environments):
+
+```http
+GET /api/dev/providers
+Authorization: Bearer <clerk-session-token>
+```
+
+Reports configured/reachable status per provider without returning secret values.
+
+### Smoke checks
+
+```bash
+cd apps/api
+uv run python scripts/provider_smoke.py
+uv run python scripts/e2e_trip_run.py
+```
+
+Test suites continue to use fake/offline providers and do not call live APIs.
