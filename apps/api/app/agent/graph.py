@@ -16,19 +16,24 @@ from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
+from app.agent.nodes.search_attractions import build_search_attractions_node
 from app.agent.nodes.search_flights import build_search_flights_node
 from app.agent.nodes.search_hotels import build_search_hotels_node
+from app.agent.nodes.search_restaurants import build_search_restaurants_node
 from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.routing import route_after_validation
 from app.agent.state import AgentInput, AgentState
 from app.llm.base import LLMAdapter
 from app.llm.factory import build_llm_adapter
+from app.tools.attractions import AttractionTool
 from app.tools.distance import DistanceTool
 from app.tools.distance_factory import build_distance_tool, build_location_resolver
 from app.tools.flights import FlightTool
 from app.tools.flights_factory import build_airport_resolver, build_flight_tool
 from app.tools.hotels import HotelTool
 from app.tools.hotels_factory import build_city_resolver, build_hotel_tool
+from app.tools.places_factory import build_attraction_tool, build_restaurant_tool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 
 CompiledTripPlannerGraph = CompiledStateGraph[AgentState, None, AgentInput, AgentState]
@@ -43,8 +48,10 @@ def build_trip_planner_graph(
     city_resolver: CityCodeResolver | None = None,
     distance_tool: DistanceTool | None = None,
     location_resolver: LocationResolver | None = None,
+    restaurant_tool: RestaurantTool | None = None,
+    attraction_tool: AttractionTool | None = None,
 ) -> StateGraph[AgentState, None, AgentInput, AgentState]:
-    """Construct extract → validate → ask_user/weather/flights/hotels/distance graph."""
+    """Construct extract → validate → ask_user/weather/flights/hotels/places graph."""
     adapter = llm_adapter or build_llm_adapter()
     weather = weather_tool or WeatherTool()
     flights = flight_tool or build_flight_tool()
@@ -53,6 +60,8 @@ def build_trip_planner_graph(
     city = city_resolver or build_city_resolver()
     distance = distance_tool or build_distance_tool()
     locations = location_resolver or build_location_resolver()
+    restaurants = restaurant_tool or build_restaurant_tool()
+    attractions = attraction_tool or build_attraction_tool()
 
     builder: StateGraph[AgentState, None, AgentInput, AgentState] = StateGraph(
         AgentState,
@@ -80,6 +89,14 @@ def build_trip_planner_graph(
         "get_distance_matrix",
         cast(Any, build_get_distance_matrix_node(distance, locations)),
     )
+    builder.add_node(
+        "search_restaurants",
+        cast(Any, build_search_restaurants_node(restaurants, locations)),
+    )
+    builder.add_node(
+        "search_attractions",
+        cast(Any, build_search_attractions_node(attractions, locations)),
+    )
 
     builder.add_edge(START, "extract_requirements")
     builder.add_edge("extract_requirements", "validate_requirements")
@@ -95,7 +112,9 @@ def build_trip_planner_graph(
     builder.add_edge("fetch_weather", "search_flights")
     builder.add_edge("search_flights", "search_hotels")
     builder.add_edge("search_hotels", "get_distance_matrix")
-    builder.add_edge("get_distance_matrix", END)
+    builder.add_edge("get_distance_matrix", "search_restaurants")
+    builder.add_edge("search_restaurants", "search_attractions")
+    builder.add_edge("search_attractions", END)
     return builder
 
 
@@ -109,6 +128,8 @@ def compile_trip_planner_graph(
     city_resolver: CityCodeResolver | None = None,
     distance_tool: DistanceTool | None = None,
     location_resolver: LocationResolver | None = None,
+    restaurant_tool: RestaurantTool | None = None,
+    attraction_tool: AttractionTool | None = None,
 ) -> CompiledTripPlannerGraph:
     """Compile the trip planner graph with an optional checkpoint backend."""
     saver = checkpointer or InMemorySaver()
@@ -121,6 +142,8 @@ def compile_trip_planner_graph(
         city_resolver=city_resolver,
         distance_tool=distance_tool,
         location_resolver=location_resolver,
+        restaurant_tool=restaurant_tool,
+        attraction_tool=attraction_tool,
     ).compile(
         checkpointer=saver,
     )

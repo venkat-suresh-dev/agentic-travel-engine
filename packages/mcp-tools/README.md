@@ -265,6 +265,66 @@ still failing?
 
 The current graph supplies only validated `departure_city` → `destination` as a 1×1 matrix. Attraction/hotel/stop matrices are deferred to itinerary phases.
 
+## Places tools (restaurants and attractions)
+
+- **Server name:** `agentic-travel-places`
+- **Tool names:** `search_restaurants`, `search_attractions`
+
+### Provider selection
+
+**Google Places API (New)** was selected because:
+
+- Official first-party API with current Text Search and Nearby Search endpoints
+- Explicit field masks for cost control
+- Returns coordinates, ratings, price levels, and opening hours suitable for normalization
+- Clear place-type filters for restaurants and attractions
+- Provider abstraction allows replacement without changing LangGraph contracts
+
+> Note: Production deployments must monitor Google Places billing SKUs and Terms of Service. Field masks are intentionally minimal.
+
+### Authentication
+
+API key via `X-Goog-Api-Key` header (`GOOGLE_PLACES_API_KEY`).
+
+**Restaurant search:** `POST /v1/places:searchText` with `includedType: restaurant`, controlled `textQuery` from validated cuisine enums, `locationBias` circle, and optional `priceLevels`.
+
+**Attraction search:** `POST /v1/places:searchNearby` with explicit `includedTypes` from validated `AttractionCategory` values and `locationRestriction` circle.
+
+**Location resolution:** Reuses `LocationResolver` / Open-Meteo geocoding at the application layer from the validated destination.
+
+### Restaurant request
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `location` | `SearchLocation` | `name`, `latitude`, `longitude` |
+| `radius_meters` | int | Search bias radius (100–50,000) |
+| `cuisine` | enum? | Controlled cuisine filter |
+| `price_levels` | enum[]? | Price preference |
+| `max_results` | int | 1–20 |
+| `language_code` / `region_code` | str? | Optional locale hints |
+
+### Attraction request
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `location` | `SearchLocation` | `name`, `latitude`, `longitude` |
+| `radius_meters` | int | Search radius (100–50,000) |
+| `categories` | enum[] | Explicit attraction categories |
+| `max_results` | int | 1–20 |
+| `language_code` / `region_code` | str? | Optional locale hints |
+
+### Field masks
+
+Restaurant and attraction searches use separate explicit field masks. Wildcard `*` is rejected. Reviews, photos, generative summaries, and menus are excluded.
+
+### Resilience
+
+Same pattern as other MCP tools: 5s timeout, one retry with 200ms backoff, 10-minute in-process cache (max 128 entries), `live` / `cached` / `unavailable` provenance.
+
+### Graph integration limitation
+
+The current graph searches restaurants and attractions near the validated destination only. No invented neighborhoods, hotel locations, or itinerary stops.
+
 ## Tests
 
 ```bash

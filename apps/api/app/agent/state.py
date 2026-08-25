@@ -8,6 +8,11 @@ from typing import TypedDict
 from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
 from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
+from mcp_tools.places.schemas import (
+    AttractionSearchResult,
+    PlacesToolMetadata,
+    RestaurantSearchResult,
+)
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
@@ -42,6 +47,10 @@ class AgentState(TypedDict, total=False):
     hotel_tool_metadata: dict[str, object] | None
     distance_matrix: dict[str, object] | None
     distance_tool_metadata: dict[str, object] | None
+    restaurant_search: dict[str, object] | None
+    restaurant_tool_metadata: dict[str, object] | None
+    attraction_search: dict[str, object] | None
+    attraction_tool_metadata: dict[str, object] | None
     status: str
 
 
@@ -128,3 +137,31 @@ def distance_metadata_from_state(state: AgentState) -> DistanceToolMetadata | No
     if raw is None:
         return None
     return DistanceToolMetadata.model_validate(raw)
+
+
+def restaurant_search_from_state(state: AgentState) -> RestaurantSearchResult | None:
+    raw = state.get("restaurant_search")
+    if raw is None:
+        return None
+    return RestaurantSearchResult.model_validate(raw)
+
+
+def restaurant_metadata_from_state(state: AgentState) -> PlacesToolMetadata | None:
+    raw = state.get("restaurant_tool_metadata")
+    if raw is None:
+        return None
+    return PlacesToolMetadata.model_validate(raw)
+
+
+def attraction_search_from_state(state: AgentState) -> AttractionSearchResult | None:
+    raw = state.get("attraction_search")
+    if raw is None:
+        return None
+    return AttractionSearchResult.model_validate(raw)
+
+
+def attraction_metadata_from_state(state: AgentState) -> PlacesToolMetadata | None:
+    raw = state.get("attraction_tool_metadata")
+    if raw is None:
+        return None
+    return PlacesToolMetadata.model_validate(raw)

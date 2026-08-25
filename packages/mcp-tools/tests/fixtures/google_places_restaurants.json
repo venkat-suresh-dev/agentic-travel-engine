@@ -1,0 +1,39 @@
+{
+  "places": [
+    {
+      "id": "places/ChIJrestaurant1",
+      "displayName": {
+        "text": "Spice Route",
+        "languageCode": "en"
+      },
+      "formattedAddress": "123 Marina Walk, Dubai, UAE",
+      "location": {
+        "latitude": 25.2048,
+        "longitude": 55.2708
+      },
+      "primaryType": "restaurant",
+      "types": ["restaurant", "food", "point_of_interest"],
+      "rating": 4.5,
+      "userRatingCount": 842,
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "priceRange": {
+        "startPrice": {
+          "currencyCode": "AED",
+          "units": "80"
+        },
+        "endPrice": {
+          "currencyCode": "AED",
+          "units": "150"
+        }
+      },
+      "regularOpeningHours": {
+        "openNow": true,
+        "weekdayDescriptions": [
+          "Monday: 12:00 – 11:00 PM",
+          "Tuesday: 12:00 – 11:00 PM"
+        ]
+      },
+      "websiteUri": "https://example.com/spice-route"
+    }
+  ]
+}

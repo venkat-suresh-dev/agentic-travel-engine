@@ -31,6 +31,22 @@ from mcp_tools.hotels.schemas import (
     MoneyAmount,
 )
 from mcp_tools.hotels.service import HotelService
+from mcp_tools.places.mcp_server import create_places_mcp_server
+from mcp_tools.places.schemas import (
+    AttractionCategory,
+    AttractionPlace,
+    AttractionSearchRequest,
+    AttractionSearchResult,
+    PlacesDataStatus,
+    PlacesToolMetadata,
+    RestaurantCuisine,
+    RestaurantPlace,
+    RestaurantPriceLevel,
+    RestaurantSearchRequest,
+    RestaurantSearchResult,
+    SearchLocation,
+)
+from mcp_tools.places.service import PlacesService
 from mcp_tools.weather.mcp_server import create_weather_mcp_server
 from mcp_tools.weather.schemas import (
     DailyForecast,
@@ -64,6 +80,19 @@ __all__ = [
     "HotelToolMetadata",
     "LocationPoint",
     "MoneyAmount",
+    "PlacesDataStatus",
+    "PlacesService",
+    "PlacesToolMetadata",
+    "RestaurantCuisine",
+    "RestaurantPlace",
+    "RestaurantPriceLevel",
+    "RestaurantSearchRequest",
+    "RestaurantSearchResult",
+    "SearchLocation",
+    "AttractionCategory",
+    "AttractionPlace",
+    "AttractionSearchRequest",
+    "AttractionSearchResult",
     "TravelMode",
     "WeatherDataStatus",
     "WeatherForecastRequest",
@@ -73,5 +102,6 @@ __all__ = [
     "create_distance_mcp_server",
     "create_flights_mcp_server",
     "create_hotels_mcp_server",
+    "create_places_mcp_server",
     "create_weather_mcp_server",
 ]

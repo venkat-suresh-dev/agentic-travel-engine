@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import GraphStatus
+from app.tools.attractions import AttractionTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 
 from tests.fakes.distance_providers import FakeLocationResolver
@@ -29,6 +31,8 @@ def test_complete_request_stores_weather_in_graph_state(
     fake_city_resolver: FakeCityCodeResolver,
     fake_distance_tool: DistanceTool,
     fake_location_resolver: FakeLocationResolver,
+    fake_restaurant_tool: RestaurantTool,
+    fake_attraction_tool: AttractionTool,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -39,6 +43,8 @@ def test_complete_request_stores_weather_in_graph_state(
         city_resolver=fake_city_resolver,
         distance_tool=fake_distance_tool,
         location_resolver=fake_location_resolver,
+        restaurant_tool=fake_restaurant_tool,
+        attraction_tool=fake_attraction_tool,
     )
 
     result = service.start(COMPLETE_REQUEST, thread_id="weather-complete")
@@ -61,6 +67,8 @@ def test_incomplete_request_does_not_fetch_weather(
     fake_city_resolver: FakeCityCodeResolver,
     fake_distance_tool: DistanceTool,
     fake_location_resolver: FakeLocationResolver,
+    fake_restaurant_tool: RestaurantTool,
+    fake_attraction_tool: AttractionTool,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -71,6 +79,8 @@ def test_incomplete_request_does_not_fetch_weather(
         city_resolver=fake_city_resolver,
         distance_tool=fake_distance_tool,
         location_resolver=fake_location_resolver,
+        restaurant_tool=fake_restaurant_tool,
+        attraction_tool=fake_attraction_tool,
     )
 
     result = service.start(INCOMPLETE_REQUEST, thread_id="weather-incomplete")

@@ -1,4 +1,4 @@
-"""Graph integration tests for the flight vertical slice."""
+"""Graph integration tests for the places vertical slice."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ COMPLETE_REQUEST = (
 INCOMPLETE_REQUEST = "Plan a 5-day trip to Dubai for 2 people."
 
 
-def test_complete_request_stores_flights_in_graph_state(
+def test_complete_request_stores_restaurant_and_attraction_results(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -47,18 +47,26 @@ def test_complete_request_stores_flights_in_graph_state(
         attraction_tool=fake_attraction_tool,
     )
 
-    result = service.start(COMPLETE_REQUEST, thread_id="flights-complete")
+    result = service.start(COMPLETE_REQUEST, thread_id="places-complete")
 
     assert result.status == GraphStatus.COMPLETE
     assert result.weather_forecast is not None
     assert result.flight_search is not None
-    assert result.flight_search.data_status.value == "live"
-    assert result.flight_search.offers
-    assert result.flight_tool_metadata is not None
-    assert result.flight_tool_metadata.tool_name == "search_flights"
+    assert result.hotel_search is not None
+    assert result.distance_matrix is not None
+    assert result.restaurant_search is not None
+    assert result.restaurant_search.data_status.value == "live"
+    assert result.restaurant_search.restaurants
+    assert result.restaurant_tool_metadata is not None
+    assert result.restaurant_tool_metadata.tool_name == "search_restaurants"
+    assert result.attraction_search is not None
+    assert result.attraction_search.data_status.value == "live"
+    assert result.attraction_search.attractions
+    assert result.attraction_tool_metadata is not None
+    assert result.attraction_tool_metadata.tool_name == "search_attractions"
 
 
-def test_incomplete_request_does_not_fetch_flights(
+def test_incomplete_request_does_not_search_places(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -83,8 +91,10 @@ def test_incomplete_request_does_not_fetch_flights(
         attraction_tool=fake_attraction_tool,
     )
 
-    result = service.start(INCOMPLETE_REQUEST, thread_id="flights-incomplete")
+    result = service.start(INCOMPLETE_REQUEST, thread_id="places-incomplete")
 
     assert result.status == GraphStatus.AWAITING_USER
-    assert result.flight_search is None
-    assert result.flight_tool_metadata is None
+    assert result.restaurant_search is None
+    assert result.restaurant_tool_metadata is None
+    assert result.attraction_search is None
+    assert result.attraction_tool_metadata is None

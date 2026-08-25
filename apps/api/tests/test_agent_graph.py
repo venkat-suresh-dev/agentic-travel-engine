@@ -13,9 +13,11 @@ from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.tools.attractions import AttractionTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 from pydantic import ValidationError
 
@@ -46,6 +48,8 @@ def agent_service(
     fake_city_resolver: FakeCityCodeResolver,
     fake_distance_tool: DistanceTool,
     fake_location_resolver: FakeLocationResolver,
+    fake_restaurant_tool: RestaurantTool,
+    fake_attraction_tool: AttractionTool,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -56,6 +60,8 @@ def agent_service(
         city_resolver=fake_city_resolver,
         distance_tool=fake_distance_tool,
         location_resolver=fake_location_resolver,
+        restaurant_tool=fake_restaurant_tool,
+        attraction_tool=fake_attraction_tool,
     )
 
 
@@ -295,6 +301,8 @@ def test_graph_is_integration_testable_end_to_end(
     fake_city_resolver: FakeCityCodeResolver,
     fake_distance_tool: DistanceTool,
     fake_location_resolver: FakeLocationResolver,
+    fake_restaurant_tool: RestaurantTool,
+    fake_attraction_tool: AttractionTool,
 ) -> None:
     from langchain_core.runnables import RunnableConfig
 
@@ -307,6 +315,8 @@ def test_graph_is_integration_testable_end_to_end(
         city_resolver=fake_city_resolver,
         distance_tool=fake_distance_tool,
         location_resolver=fake_location_resolver,
+        restaurant_tool=fake_restaurant_tool,
+        attraction_tool=fake_attraction_tool,
     )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)

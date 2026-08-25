@@ -1,0 +1,27 @@
+{
+  "places": [
+    {
+      "id": "places/ChIJattraction1",
+      "displayName": {
+        "text": "Observation Deck",
+        "languageCode": "en"
+      },
+      "formattedAddress": "1 Sheikh Mohammed bin Rashid Blvd, Dubai, UAE",
+      "location": {
+        "latitude": 25.1972,
+        "longitude": 55.2744
+      },
+      "primaryType": "tourist_attraction",
+      "types": ["tourist_attraction", "point_of_interest"],
+      "rating": 4.8,
+      "userRatingCount": 12500,
+      "regularOpeningHours": {
+        "openNow": true,
+        "weekdayDescriptions": [
+          "Monday: 8:30 AM – 11:00 PM"
+        ]
+      },
+      "websiteUri": "https://example.com/observation-deck"
+    }
+  ]
+}

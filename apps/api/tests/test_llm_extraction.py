@@ -14,9 +14,11 @@ from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import TripRequest
 from app.llm.anthropic import AnthropicLLMAdapter
 from app.llm.exceptions import LLMProviderError, LLMStructuredOutputError
+from app.tools.attractions import AttractionTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 from pydantic import BaseModel
 
@@ -52,6 +54,8 @@ def agent_service(
     fake_city_resolver: FakeCityCodeResolver,
     fake_distance_tool: DistanceTool,
     fake_location_resolver: FakeLocationResolver,
+    fake_restaurant_tool: RestaurantTool,
+    fake_attraction_tool: AttractionTool,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -62,6 +66,8 @@ def agent_service(
         city_resolver=fake_city_resolver,
         distance_tool=fake_distance_tool,
         location_resolver=fake_location_resolver,
+        restaurant_tool=fake_restaurant_tool,
+        attraction_tool=fake_attraction_tool,
     )
 
 

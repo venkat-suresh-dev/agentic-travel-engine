@@ -15,6 +15,11 @@ from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
 from mcp_tools.hotels.locations.base import CityCodeResolver
 from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
+from mcp_tools.places.schemas import (
+    AttractionSearchResult,
+    PlacesToolMetadata,
+    RestaurantSearchResult,
+)
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
 from app.agent.graph import CompiledTripPlannerGraph, compile_trip_planner_graph
@@ -22,6 +27,8 @@ from app.agent.state import (
     AgentInput,
     AgentState,
     GraphStatus,
+    attraction_metadata_from_state,
+    attraction_search_from_state,
     clarification_from_state,
     distance_matrix_from_state,
     distance_metadata_from_state,
@@ -29,6 +36,8 @@ from app.agent.state import (
     flight_search_from_state,
     hotel_metadata_from_state,
     hotel_search_from_state,
+    restaurant_metadata_from_state,
+    restaurant_search_from_state,
     trip_request_from_state,
     validation_from_state,
     weather_forecast_from_state,
@@ -36,9 +45,11 @@ from app.agent.state import (
 )
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.llm.base import LLMAdapter
+from app.tools.attractions import AttractionTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
+from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
 
 
@@ -59,6 +70,10 @@ class TripPlannerRunResult:
     hotel_tool_metadata: HotelToolMetadata | None
     distance_matrix: DistanceMatrixResult | None
     distance_tool_metadata: DistanceToolMetadata | None
+    restaurant_search: RestaurantSearchResult | None
+    restaurant_tool_metadata: PlacesToolMetadata | None
+    attraction_search: AttractionSearchResult | None
+    attraction_tool_metadata: PlacesToolMetadata | None
     state: AgentState
 
 
@@ -77,6 +92,8 @@ class TripPlannerAgentService:
         city_resolver: CityCodeResolver | None = None,
         distance_tool: DistanceTool | None = None,
         location_resolver: LocationResolver | None = None,
+        restaurant_tool: RestaurantTool | None = None,
+        attraction_tool: AttractionTool | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
@@ -89,6 +106,8 @@ class TripPlannerAgentService:
             city_resolver=city_resolver,
             distance_tool=distance_tool,
             location_resolver=location_resolver,
+            restaurant_tool=restaurant_tool,
+            attraction_tool=attraction_tool,
         )
 
     def start(
@@ -144,5 +163,9 @@ class TripPlannerAgentService:
             hotel_tool_metadata=hotel_metadata_from_state(state),
             distance_matrix=distance_matrix_from_state(state),
             distance_tool_metadata=distance_metadata_from_state(state),
+            restaurant_search=restaurant_search_from_state(state),
+            restaurant_tool_metadata=restaurant_metadata_from_state(state),
+            attraction_search=attraction_search_from_state(state),
+            attraction_tool_metadata=attraction_metadata_from_state(state),
             state=state,
         )

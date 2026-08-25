@@ -312,3 +312,74 @@ class FakeDistanceProvider:
         if not routes:
             return build_identical_location_routes(request)
         return routes
+
+
+class FakePlacesProvider:
+    def __init__(
+        self,
+        *,
+        should_fail: bool = False,
+        malformed: bool = False,
+        restaurant_payload: object | None = None,
+        attraction_payload: object | None = None,
+    ) -> None:
+        self.should_fail = should_fail
+        self.malformed = malformed
+        self.restaurant_payload = restaurant_payload
+        self.attraction_payload = attraction_payload
+
+    def search_restaurants(self, request):  # type: ignore[no-untyped-def]
+        from mcp_tools.places.exceptions import (
+            PlacesMalformedResponseError,
+            PlacesProviderError,
+        )
+        from mcp_tools.places.providers.normalize import parse_google_restaurant_places
+        from mcp_tools.places.schemas import RestaurantPlace
+
+        if self.should_fail:
+            raise PlacesProviderError("simulated provider failure")
+        if self.malformed:
+            raise PlacesMalformedResponseError("simulated malformed response")
+        if self.restaurant_payload is not None:
+            return parse_google_restaurant_places(self.restaurant_payload)
+
+        return [
+            RestaurantPlace(
+                place_id="places/ChIJfake-restaurant",
+                name="Fake Restaurant",
+                address="123 Test Street",
+                latitude=request.location.latitude,
+                longitude=request.location.longitude,
+                primary_type="restaurant",
+                rating=4.2,
+                user_rating_count=100,
+            )
+        ]
+
+    def search_attractions(self, request):  # type: ignore[no-untyped-def]
+        from mcp_tools.places.exceptions import (
+            PlacesMalformedResponseError,
+            PlacesProviderError,
+        )
+        from mcp_tools.places.providers.normalize import parse_google_attraction_places
+        from mcp_tools.places.schemas import AttractionPlace
+
+        if self.should_fail:
+            raise PlacesProviderError("simulated provider failure")
+        if self.malformed:
+            raise PlacesMalformedResponseError("simulated malformed response")
+        if self.attraction_payload is not None:
+            return parse_google_attraction_places(self.attraction_payload)
+
+        return [
+            AttractionPlace(
+                place_id="places/ChIJfake-attraction",
+                name="Fake Attraction",
+                address="456 Test Avenue",
+                latitude=request.location.latitude,
+                longitude=request.location.longitude,
+                primary_type="tourist_attraction",
+                rating=4.6,
+                user_rating_count=500,
+            )
+        ]

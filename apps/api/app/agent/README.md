@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → END
+  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → search_restaurants → search_attractions → END
   └── incomplete → ask_user → END
 ```
 
@@ -36,6 +36,10 @@ Important fields:
 | `hotel_tool_metadata` | Tool-call provenance for hotels |
 | `distance_matrix` | Normalized distance/duration facts from the MCP distance tool |
 | `distance_tool_metadata` | Tool-call provenance for distance |
+| `restaurant_search` | Normalized restaurant results from the MCP places tool |
+| `restaurant_tool_metadata` | Tool-call provenance for restaurants |
+| `attraction_search` | Normalized attraction results from the MCP places tool |
+| `attraction_tool_metadata` | Tool-call provenance for attractions |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -93,6 +97,24 @@ See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-bookin
 - Stores normalized route facts (`distance_meters`, `duration_seconds`) and tool metadata in graph state.
 - Currently supplies a 1×1 departure→destination matrix only; no invented stops or attractions.
 - Does **not** let the LLM invent travel times or distances.
+
+### `search_restaurants` (Phase 3E)
+
+- Invoked only after distance lookup on the complete-request path.
+- Builds a deterministic `RestaurantSearchRequest` from the validated destination.
+- Resolves destination coordinates via `LocationResolver` (Open-Meteo geocoding).
+- Calls `RestaurantTool` → `PlacesService` → Google Places Text Search (New).
+- Stores normalized restaurant facts and tool metadata in graph state.
+- Does **not** let the LLM invent ratings, prices, or hours.
+
+### `search_attractions` (Phase 3E)
+
+- Invoked only after restaurant search on the complete-request path.
+- Builds a deterministic `AttractionSearchRequest` from the validated destination.
+- Resolves destination coordinates via `LocationResolver`.
+- Calls `AttractionTool` → `PlacesService` → Google Places Nearby Search (New).
+- Stores normalized attraction facts and tool metadata in graph state.
+- Does **not** let the LLM invent venues, ratings, or hours.
 
 ### `ask_user`
 
@@ -204,9 +226,25 @@ OpenRouteService Matrix API + Open-Meteo geocoding
 
 See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and normalized units.
 
+## Places tool boundary (Phase 3E)
+
+```text
+search_restaurants / search_attractions nodes
+    ↓
+RestaurantTool / AttractionTool (apps/api)
+    ↓
+PlacesService (packages/mcp-tools)
+    ↓
+MCP search_restaurants / search_attractions
+    ↓
+Google Places API (New) + Open-Meteo geocoding
+```
+
+See `packages/mcp-tools/README.md` for field masks, cache, retry, and no-booking semantics.
+
 ## Deferred to later phases
 
-- Additional MCP tools (restaurants, attractions, currency conversion)
+- Additional MCP tools (currency conversion)
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
 - Langfuse tracing
