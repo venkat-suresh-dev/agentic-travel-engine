@@ -586,3 +586,111 @@ async def test_graph_failure_returns_controlled_response(
     assert "api key" not in response.text.lower()
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_agent_run_returns_latest_state(
+    agent_app: FastAPI,
+    agent_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    await resolve_or_create_user(
+        db_session,
+        AuthenticatedIdentity(
+            external_auth_id="agent-user-get",
+            email="get@example.com",
+            display_name="Get User",
+        ),
+    )
+    _set_verifier(
+        agent_app,
+        AuthenticatedIdentity(
+            external_auth_id="agent-user-get",
+            email="get@example.com",
+            display_name="Get User",
+        ),
+    )
+    headers = {"Authorization": "Bearer test-token"}
+
+    created = await agent_client.post(
+        "/api/agent/runs",
+        json={"message": COMPLETE_REQUEST},
+        headers=headers,
+    )
+    run_id = created.json()["run_id"]
+
+    fetched = await agent_client.get(f"/api/agent/runs/{run_id}", headers=headers)
+
+    assert fetched.status_code == 200
+    body = fetched.json()
+    assert body["run_id"] == run_id
+    assert body["status"] == "complete"
+    assert body["itinerary"] is not None
+    assert body["operation"]["operation_type"] == "initial_plan"
+
+
+@pytest.mark.asyncio
+async def test_get_agent_run_requires_ownership(
+    agent_app: FastAPI,
+    agent_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    owner = AuthenticatedIdentity(
+        external_auth_id="agent-user-get-owner",
+        email="get-owner@example.com",
+        display_name="Owner",
+    )
+    other = AuthenticatedIdentity(
+        external_auth_id="agent-user-get-other",
+        email="get-other@example.com",
+        display_name="Other",
+    )
+    await resolve_or_create_user(db_session, owner)
+    await resolve_or_create_user(db_session, other)
+
+    _set_verifier(agent_app, owner)
+    created = await agent_client.post(
+        "/api/agent/runs",
+        json={"message": COMPLETE_REQUEST},
+        headers={"Authorization": "Bearer owner-token"},
+    )
+    run_id = created.json()["run_id"]
+
+    _set_verifier(agent_app, other)
+    response = await agent_client.get(
+        f"/api/agent/runs/{run_id}",
+        headers={"Authorization": "Bearer other-token"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_unknown_run_returns_404(
+    agent_app: FastAPI,
+    agent_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    await resolve_or_create_user(
+        db_session,
+        AuthenticatedIdentity(
+            external_auth_id="agent-user-get-missing",
+            email="get-missing@example.com",
+            display_name="Missing",
+        ),
+    )
+    _set_verifier(
+        agent_app,
+        AuthenticatedIdentity(
+            external_auth_id="agent-user-get-missing",
+            email="get-missing@example.com",
+            display_name="Missing",
+        ),
+    )
+
+    response = await agent_client.get(
+        "/api/agent/runs/not-a-real-run",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 404

@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Trip Planner Web
 
-## Getting Started
+Next.js App Router frontend for the AI Trip Planner workspace.
 
-First, run the development server:
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+cp .env.example .env.local
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Runs at `http://127.0.0.1:3002`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For E2E/browser QA without Clerk keys:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_PLAYWRIGHT=1 pnpm dev
+```
 
-## Learn More
+### Required environment
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | FastAPI backend (`http://127.0.0.1:8000`). In the browser, requests default to same-origin via the Next.js rewrite when unset. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key for middleware |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Planner routes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Route | Purpose |
+| --- | --- |
+| `/planner` | Premium empty state + initial planning |
+| `/planner/[runId]` | Conversation workspace, itinerary, budget, modifications |
+| `/sign-in` | Clerk sign-in (theme-aligned) |
+| `/sign-up` | Clerk sign-up (theme-aligned) |
 
-## Deploy on Vercel
+## Hydration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`/planner/[runId]` hydrates from `GET /api/agent/runs/{run_id}` via TanStack Query. The server is the source of truth for run state; `sessionStorage` caches conversation history and provides short-lived placeholder data during refresh.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Runs are process-local on the API. A hard refresh works while the backend process still holds the run; after an API restart, expired runs return 404.
+
+## Architecture
+
+```text
+Planner UI
+  ↓ typed API client (lib/api)
+  ↓ TanStack Query (lib/planner/hooks)
+  ↓ GET /api/agent/runs/{run_id} + POST mutations
+  ↓ sessionStorage (conversation history cache only)
+  ↓ FastAPI /api/agent/runs
+```
+
+Shared API contracts live in `packages/shared-types`.
+
+## Tests
+
+```bash
+pnpm test          # Vitest + RTL
+pnpm test:e2e      # Playwright (mocked API)
+pnpm type-check
+pnpm lint
+pnpm build
+```

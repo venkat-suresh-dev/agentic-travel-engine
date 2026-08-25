@@ -1,0 +1,47 @@
+export const clerkAppearance = {
+  variables: {
+    colorPrimary: "#0d5c63",
+    colorBackground: "#fbf8f3",
+    colorInputBackground: "#fffdf9",
+    colorInputText: "#17130f",
+    colorText: "#17130f",
+    colorTextSecondary: "#5f574f",
+    colorTextOnPrimaryBackground: "#f7f4ef",
+    colorDanger: "#8f2f2a",
+    colorSuccess: "#24553a",
+    colorWarning: "#8a4d12",
+    colorNeutral: "#8a8178",
+    borderRadius: "1rem",
+    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    fontFamilyButtons: "var(--font-geist-sans), system-ui, sans-serif",
+    fontSize: "0.9375rem",
+  },
+  elements: {
+    rootBox: "w-full",
+    cardBox: "shadow-none",
+    card: "rounded-[2rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-elevated)]",
+    headerTitle: "font-display text-2xl tracking-tight text-[var(--foreground)]",
+    headerSubtitle: "text-[var(--foreground-secondary)]",
+    socialButtonsBlockButton:
+      "rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]",
+    formButtonPrimary:
+      "rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-hover)] shadow-none",
+    formFieldInput:
+      "rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]",
+    formFieldLabel: "text-[var(--foreground-secondary)]",
+    footerActionLink: "text-[var(--accent)] hover:text-[var(--accent-hover)]",
+    identityPreviewText: "text-[var(--foreground)]",
+    identityPreviewEditButton: "text-[var(--accent)]",
+    dividerLine: "bg-[var(--border)]",
+    dividerText: "text-[var(--foreground-muted)]",
+    alertText: "text-[var(--foreground-secondary)]",
+    formFieldInputShowPasswordButton: "text-[var(--foreground-muted)]",
+    navbarButton: "text-[var(--foreground)]",
+    profileSectionTitle: "font-display text-[var(--foreground)]",
+    profileSectionContent: "text-[var(--foreground-secondary)]",
+    userButtonPopoverCard:
+      "rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-soft)]",
+    userButtonPopoverActionButton: "text-[var(--foreground)] hover:bg-[var(--surface-hover)]",
+    userButtonPopoverFooter: "hidden",
+  },
+};

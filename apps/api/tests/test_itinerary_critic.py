@@ -252,8 +252,10 @@ def test_travel_buffer_violation_rejected() -> None:
     context = example_itinerary_context(duration_days=1)
     candidate, itinerary = _approved_draft()
     catalog = build_grounded_catalog(context)
-    leg = itinerary.days[0].travel_legs[0].model_copy(
-        update={"start_time": time(8, 0), "end_time": time(8, 30)}
+    leg = (
+        itinerary.days[0]
+        .travel_legs[0]
+        .model_copy(update={"start_time": time(8, 0), "end_time": time(8, 30)})
     )
     broken_day = itinerary.days[0].model_copy(update={"travel_legs": [leg]})
     broken = itinerary.model_copy(deep=True, update={"days": [broken_day]})

@@ -41,6 +41,27 @@ def classify_resume_operation(
     return ConversationOperationType.CLARIFICATION
 
 
+def infer_snapshot_operation_type(
+    result: TripPlannerRunResult,
+) -> ConversationOperationType:
+    """Infer the latest completed operation type for read-only run snapshots."""
+    modification_status = result.state.get("modification_status")
+    if modification_status in {
+        ModificationStatus.IN_PROGRESS.value,
+        ModificationStatus.COMPLETE.value,
+        ModificationStatus.FAILED.value,
+    }:
+        return ConversationOperationType.MODIFICATION
+    if result.status == GraphStatus.AWAITING_USER:
+        return ConversationOperationType.CLARIFICATION
+    validation = result.validation
+    if validation is not None and not validation.is_complete:
+        return ConversationOperationType.CLARIFICATION
+    if result.planning_failed and _valid_itinerary(result) is None:
+        return ConversationOperationType.INITIAL_PLAN
+    return ConversationOperationType.INITIAL_PLAN
+
+
 def resolve_run_status(
     result: TripPlannerRunResult,
     *,

@@ -30,6 +30,7 @@ from app.services.conversation_mapper import (
     build_planning_failure,
     build_tool_availability,
     classify_resume_operation,
+    infer_snapshot_operation_type,
     resolve_run_status,
 )
 
@@ -122,6 +123,15 @@ class AgentRunService:
             result = self._agent_service.resume(run_id, message)
         except RequirementExtractionError:
             return self._failed_outcome(run_id, operation_type=operation_type)
+        return self._map_result(result, operation_type=operation_type)
+
+    def get_run(self, user_id: UUID, run_id: str) -> AgentRunOutcome:
+        """Return the latest checkpointed state for an owned planning run."""
+        self._assert_run_access(user_id, run_id)
+        result = self._agent_service.get_state(run_id)
+        if result is None:
+            raise ResourceNotFoundError("Agent run not found")
+        operation_type = infer_snapshot_operation_type(result)
         return self._map_result(result, operation_type=operation_type)
 
     def _assert_run_access(self, user_id: UUID, run_id: str) -> None:

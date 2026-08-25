@@ -61,3 +61,26 @@ async def submit_agent_run_message(
         ) from exc
 
     return agent_run_outcome_to_response(outcome)
+
+
+@router.get("/runs/{run_id}", response_model=AgentRunResponse)
+async def get_agent_run(
+    run_id: str,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    agent_run_service: Annotated[AgentRunService, Depends(get_agent_run_service)],
+) -> AgentRunResponse:
+    """Return the latest state for an owned planning run."""
+    try:
+        outcome = agent_run_service.get_run(current_user.id, run_id)
+    except ResourceNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except AuthorizationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+
+    return agent_run_outcome_to_response(outcome)

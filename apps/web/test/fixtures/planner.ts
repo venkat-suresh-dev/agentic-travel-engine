@@ -1,0 +1,156 @@
+import type { AgentRunResponse } from "@agentic-travel-engine/shared-types";
+
+export const completeRunFixture: AgentRunResponse = {
+  status: "complete",
+  run_id: "run-complete-1",
+  operation: {
+    operation_type: "initial_plan",
+    status: "complete",
+    affected_days: [],
+    changed_item_ids: [],
+    refreshed_sources: [],
+    budget_changed: false,
+    summary: "Initial itinerary created.",
+  },
+  trip_request: {
+    destination: "Dubai",
+    start_date: null,
+    end_date: null,
+    duration_days: 5,
+    travelers: 2,
+    budget_amount: "150000",
+    budget_currency: "INR",
+    departure_city: "Mumbai",
+    trip_type: "leisure",
+    preferences: [],
+  },
+  missing_fields: [],
+  clarification: null,
+  itinerary: {
+    days: [
+      {
+        day_number: 1,
+        date: null,
+        subtotal: "12000",
+        currency: "INR",
+        travel_legs: [],
+        meal: null,
+        items: [
+          {
+            item_id: "item-1",
+            day_number: 1,
+            date: null,
+            start_time: "09:00:00",
+            end_time: "10:00:00",
+            category: "restaurant",
+            title: "Breakfast",
+            description: null,
+            location_name: "Old Dubai",
+            latitude: null,
+            longitude: null,
+            cost: {
+              amount: "800",
+              currency: "INR",
+              is_estimate: false,
+              data_kind: "live",
+            },
+            source: "google_places",
+            source_id: "places/1",
+            data_status: "live",
+          },
+        ],
+      },
+    ],
+    infrastructure_items: [],
+    currency: "INR",
+    total_estimated_cost: "144000",
+    budget_currency: "INR",
+    budget_amount: "150000",
+    budget_total_cost: "144000",
+    budget_remaining: "6000",
+  },
+  budget: {
+    currency: "INR",
+    budget_amount: "150000",
+    total_cost: "144000",
+    remaining: "6000",
+    budget_exceeded: false,
+    variance: "6000",
+  },
+  critic: {
+    valid: true,
+    issue_count: 0,
+    warning_count: 0,
+    issues: [],
+    warnings: [],
+  },
+  tool_availability: {
+    aggregate_status: "success",
+    unavailable_tools: [],
+  },
+  planning_failure: null,
+  modification_failure: null,
+  error: null,
+};
+
+export const clarificationRunFixture: AgentRunResponse = {
+  ...completeRunFixture,
+  status: "needs_clarification",
+  run_id: "run-clarify-1",
+  operation: {
+    operation_type: "initial_plan",
+    status: "needs_clarification",
+    affected_days: [],
+    changed_item_ids: [],
+    refreshed_sources: [],
+    budget_changed: false,
+    summary: "Additional trip details are required.",
+  },
+  itinerary: null,
+  budget: null,
+  missing_fields: ["budget_amount", "departure_city"],
+  clarification: {
+    missing_fields: ["budget_amount", "departure_city"],
+    prompts: {
+      budget_amount: "What is your total budget?",
+      departure_city: "Where are you departing from?",
+    },
+    message: "I need your budget and departure city to continue.",
+  },
+};
+
+export const modificationRunFixture: AgentRunResponse = {
+  ...completeRunFixture,
+  run_id: "run-mod-1",
+  operation: {
+    operation_type: "modification",
+    status: "complete",
+    affected_days: [2],
+    changed_item_ids: ["item-2"],
+    refreshed_sources: [],
+    budget_changed: true,
+    summary: "Updated day(s) 2. No provider refresh required.",
+  },
+};
+
+export const failedModificationFixture: AgentRunResponse = {
+  ...completeRunFixture,
+  status: "failed",
+  run_id: "run-fail-1",
+  operation: {
+    operation_type: "modification",
+    status: "failed",
+    affected_days: [2],
+    changed_item_ids: [],
+    refreshed_sources: [],
+    budget_changed: false,
+    summary:
+      "The requested change could not be applied. Your previous itinerary is still intact.",
+  },
+  modification_failure: {
+    message: "itinerary modification critic retries exhausted",
+    issues: ["simulated critic rejection"],
+    preserved_itinerary: true,
+  },
+  error: "itinerary modification critic retries exhausted",
+};

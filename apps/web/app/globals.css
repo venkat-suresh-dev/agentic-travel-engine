@@ -1,8 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4efe6;
+  --foreground: #17130f;
+  --foreground-secondary: #5f574f;
+  --foreground-muted: #8a8178;
+  --surface: #fbf8f3;
+  --surface-elevated: #fffdf9;
+  --surface-muted: #efe8dd;
+  --surface-hover: #f0e9df;
+  --surface-highlight: #f7f2ea;
+  --border: #ddd4c8;
+  --border-strong: #c8bdb0;
+  --accent: #0d5c63;
+  --accent-hover: #0b4e54;
+  --accent-foreground: #f7f4ef;
+  --ring: #0d5c63;
+  --shadow-soft: 0 12px 40px rgba(23, 19, 15, 0.06);
+  --shadow-elevated: 0 24px 60px rgba(23, 19, 15, 0.08);
+  --budget-under-bg: #e8f3ec;
+  --budget-under-fg: #24553a;
+  --budget-near-bg: #f8ebda;
+  --budget-near-fg: #8a4d12;
+  --budget-over-bg: #f8e7e5;
+  --budget-over-fg: #8f2f2a;
+  --status-live-bg: #e4f2ef;
+  --status-live-fg: #0d5c63;
+  --status-cached-bg: #ece8f8;
+  --status-cached-fg: #4f3f8c;
+  --status-estimated-bg: #f4efe6;
+  --status-estimated-fg: #6a5a46;
+  --status-free-bg: #edf3e8;
+  --status-free-fg: #3f5f34;
+  --status-unavailable-bg: #f1e9e8;
+  --status-unavailable-fg: #7a4d49;
 }
 
 @theme inline {
@@ -10,17 +41,82 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(13, 92, 99, 0.05), transparent 28%),
+    linear-gradient(180deg, #f7f2ea 0%, var(--background) 40%, #efe8dd 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100%;
+}
+
+.font-display {
+  font-family: var(--font-fraunces), serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Premium editorial scrollbar — quiet, precise, theme-aligned */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 92, 99, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(13, 92, 99, 0.2);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(13, 92, 99, 0.34);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollbar-subtle {
+  scrollbar-color: rgba(95, 87, 79, 0.22) transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background-color: rgba(95, 87, 79, 0.18);
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(95, 87, 79, 0.3);
 }

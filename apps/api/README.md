@@ -203,6 +203,23 @@ Resumes the same graph checkpoint, merges new information into the existing `tri
 
 When the run already has a valid completed itinerary, the same endpoint routes through selective modification (Phase 6A) instead of restarting full planning.
 
+### Fetch run state (Phase 7A)
+
+```http
+GET /api/agent/runs/{run_id}
+Authorization: Bearer <clerk-session-token>
+```
+
+Returns the latest typed run representation for an owned planning session. Uses the same `AgentRunResponse` contract and conversation mapper as the POST endpoints.
+
+| Status | Meaning |
+|--------|---------|
+| `401` | Unauthenticated |
+| `403` | Run belongs to another user |
+| `404` | Unknown run (or expired after API restart) |
+
+Run state is read from the in-process `AgentRunRegistry` / LangGraph checkpoint. This endpoint does not introduce durable Redis or Postgres checkpointing.
+
 ### Conversation lifecycle (Phase 6B)
 
 ```text

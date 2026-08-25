@@ -8,7 +8,7 @@ describe("Home page", () => {
     render(<Home />);
 
     expect(
-      screen.getByRole("heading", { name: /ai trip planner/i }),
+      screen.getByRole("link", { name: /open planner/i }),
     ).toBeInTheDocument();
   });
 });

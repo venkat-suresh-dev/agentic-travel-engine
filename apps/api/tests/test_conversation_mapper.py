@@ -13,6 +13,7 @@ from app.services.conversation_mapper import (
     build_modification_failure,
     build_operation_result,
     classify_resume_operation,
+    infer_snapshot_operation_type,
     resolve_run_status,
 )
 
@@ -134,6 +135,20 @@ def test_build_operation_result_marks_modification_failure_summary() -> None:
     assert operation.status.value == "failed"
     assert operation.affected_days == [2]
     assert "could not be applied" in (operation.summary or "")
+
+
+def test_infer_snapshot_operation_type_for_modification() -> None:
+    itinerary = example_valid_itinerary(duration_days=2)
+    result = _minimal_result(
+        status=GraphStatus.COMPLETE,
+        state={
+            "modification_status": ModificationStatus.COMPLETE.value,
+            "itinerary": itinerary.model_dump(mode="json"),
+        },
+    )
+    assert (
+        infer_snapshot_operation_type(result) == ConversationOperationType.MODIFICATION
+    )
 
 
 def test_build_modification_failure_from_state() -> None:
