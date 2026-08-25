@@ -14,6 +14,7 @@ from app.agent.routing import route_after_retrieve_context, route_after_validati
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.itinerary.composer.fake import FakeItineraryComposer
 from app.tools.attractions import AttractionTool
 from app.tools.currency import CurrencyTool
 from app.tools.distance import DistanceTool
@@ -330,6 +331,7 @@ def test_graph_is_integration_testable_end_to_end(
         restaurant_tool=fake_restaurant_tool,
         attraction_tool=fake_attraction_tool,
         currency_tool=fake_currency_tool,
+        itinerary_composer=FakeItineraryComposer(),
     )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)

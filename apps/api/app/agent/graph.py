@@ -16,6 +16,7 @@ from app.agent.nodes.aggregate_independent_tools import (
     build_aggregate_independent_tools_node,
 )
 from app.agent.nodes.ask_user import ask_user
+from app.agent.nodes.build_itinerary import build_build_itinerary_node
 from app.agent.nodes.compute_budget import build_compute_budget_node
 from app.agent.nodes.convert_currency import build_convert_currency_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
@@ -33,6 +34,8 @@ from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
 from app.agent.routing import route_after_retrieve_context, route_after_validation
 from app.agent.state import AgentInput, AgentState
 from app.core.config import Settings, settings
+from app.itinerary.composer.base import ItineraryComposer
+from app.itinerary.composer.llm import LLMItineraryComposer
 from app.llm.base import LLMAdapter
 from app.llm.factory import build_llm_adapter
 from app.rag.service import RAGRetriever
@@ -66,6 +69,7 @@ def build_trip_planner_graph(
     currency_tool: CurrencyTool | None = None,
     tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
     rag_retriever: RAGRetriever | None = None,
+    itinerary_composer: ItineraryComposer | None = None,
     config: Settings | None = None,
 ) -> StateGraph[AgentState, None, AgentInput, AgentState]:
     """Construct extract → validate → parallel tool fan-out graph."""
@@ -84,6 +88,7 @@ def build_trip_planner_graph(
     limiter = tool_concurrency_limiter or ToolConcurrencyLimiter(
         cfg.agent_tool_concurrency_limit
     )
+    composer = itinerary_composer or LLMItineraryComposer(adapter)
 
     builder: StateGraph[AgentState, None, AgentInput, AgentState] = StateGraph(
         AgentState,
@@ -132,6 +137,10 @@ def build_trip_planner_graph(
         cast(Any, build_convert_currency_node(currency, limiter)),
     )
     builder.add_node("compute_budget", cast(Any, build_compute_budget_node()))
+    builder.add_node(
+        "build_itinerary",
+        cast(Any, build_build_itinerary_node(composer=composer)),
+    )
     builder.add_node("finalize_run", cast(Any, build_finalize_run_node()))
 
     builder.add_edge(START, "extract_requirements")
@@ -153,7 +162,8 @@ def build_trip_planner_graph(
 
     builder.add_edge("aggregate_independent_tools", "convert_currency")
     builder.add_edge("convert_currency", "compute_budget")
-    builder.add_edge("compute_budget", "finalize_run")
+    builder.add_edge("compute_budget", "build_itinerary")
+    builder.add_edge("build_itinerary", "finalize_run")
     builder.add_edge("finalize_run", END)
     return builder
 
@@ -173,6 +183,7 @@ def compile_trip_planner_graph(
     currency_tool: CurrencyTool | None = None,
     tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
     rag_retriever: RAGRetriever | None = None,
+    itinerary_composer: ItineraryComposer | None = None,
     config: Settings | None = None,
 ) -> CompiledTripPlannerGraph:
     """Compile the trip planner graph with an optional checkpoint backend."""
@@ -191,6 +202,7 @@ def compile_trip_planner_graph(
         currency_tool=currency_tool,
         tool_concurrency_limiter=tool_concurrency_limiter,
         rag_retriever=rag_retriever,
+        itinerary_composer=itinerary_composer,
         config=config,
     ).compile(
         checkpointer=saver,

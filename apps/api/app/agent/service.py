@@ -46,6 +46,7 @@ from app.agent.state import (
     flight_search_from_state,
     hotel_metadata_from_state,
     hotel_search_from_state,
+    itinerary_build_result_from_state,
     orchestration_summary_from_state,
     restaurant_metadata_from_state,
     restaurant_search_from_state,
@@ -56,6 +57,9 @@ from app.agent.state import (
 )
 from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.itinerary.composer.base import ItineraryComposer
+from app.itinerary.composer.fake import FakeItineraryComposer
+from app.itinerary.schemas import ItineraryBuildResult
 from app.llm.base import LLMAdapter
 from app.tools.attractions import AttractionTool
 from app.tools.currency import CurrencyTool
@@ -90,6 +94,7 @@ class TripPlannerRunResult:
     currency_conversion: CurrencyConversionResult | None
     currency_tool_metadata: CurrencyToolMetadata | None
     budget_result: BudgetResult | None
+    itinerary_build_result: ItineraryBuildResult | None
     aggregate_run_status: AggregateRunStatus | None
     tool_orchestration_summary: ToolOrchestrationSummary | None
     state: AgentState
@@ -114,8 +119,10 @@ class TripPlannerAgentService:
         attraction_tool: AttractionTool | None = None,
         currency_tool: CurrencyTool | None = None,
         tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
+        itinerary_composer: ItineraryComposer | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
+        resolved_composer = itinerary_composer or FakeItineraryComposer()
         self._graph = graph or compile_trip_planner_graph(
             checkpointer=self._checkpointer,
             llm_adapter=llm_adapter,
@@ -130,6 +137,7 @@ class TripPlannerAgentService:
             attraction_tool=attraction_tool,
             currency_tool=currency_tool,
             tool_concurrency_limiter=tool_concurrency_limiter,
+            itinerary_composer=resolved_composer,
         )
 
     def start(
@@ -195,6 +203,7 @@ class TripPlannerAgentService:
             currency_conversion=currency_conversion_from_state(state),
             currency_tool_metadata=currency_metadata_from_state(state),
             budget_result=budget_result_from_state(state),
+            itinerary_build_result=itinerary_build_result_from_state(state),
             aggregate_run_status=aggregate_run_status_from_state(state),
             tool_orchestration_summary=summary,
             state=state,

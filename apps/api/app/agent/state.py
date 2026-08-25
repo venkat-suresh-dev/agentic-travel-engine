@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, TypedDict
+from typing import TYPE_CHECKING, Annotated, TypedDict
 
 from mcp_tools.currency.schemas import CurrencyConversionResult, CurrencyToolMetadata
 from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
@@ -22,6 +22,14 @@ from app.agent.orchestration.schemas import (
 )
 from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+
+if TYPE_CHECKING:
+    from app.itinerary.schemas import (
+        Itinerary,
+        ItineraryBuildResult,
+        ItinerarySelectionCandidate,
+        ItineraryValidationResult,
+    )
 
 
 def _merge_tool_orchestration(
@@ -73,6 +81,10 @@ class AgentState(TypedDict, total=False):
     retrieved_context: dict[str, object] | None
     retrieved_context_formatted: str | None
     budget_result: dict[str, object] | None
+    itinerary: dict[str, object] | None
+    itinerary_candidate: dict[str, object] | None
+    itinerary_validation: dict[str, object] | None
+    itinerary_build_success: bool | None
     status: str
 
 
@@ -228,3 +240,46 @@ def budget_result_from_state(state: AgentState) -> BudgetResult | None:
     if raw is None:
         return None
     return BudgetResult.model_validate(raw)
+
+
+def itinerary_from_state(state: AgentState) -> Itinerary | None:
+    from app.itinerary.schemas import Itinerary
+
+    raw = state.get("itinerary")
+    if raw is None:
+        return None
+    return Itinerary.model_validate(raw)
+
+
+def itinerary_candidate_from_state(
+    state: AgentState,
+) -> ItinerarySelectionCandidate | None:
+    from app.itinerary.schemas import ItinerarySelectionCandidate
+
+    raw = state.get("itinerary_candidate")
+    if raw is None:
+        return None
+    return ItinerarySelectionCandidate.model_validate(raw)
+
+
+def itinerary_validation_from_state(
+    state: AgentState,
+) -> ItineraryValidationResult | None:
+    from app.itinerary.schemas import ItineraryValidationResult
+
+    raw = state.get("itinerary_validation")
+    if raw is None:
+        return None
+    return ItineraryValidationResult.model_validate(raw)
+
+
+def itinerary_build_result_from_state(state: AgentState) -> ItineraryBuildResult:
+    from app.itinerary.schemas import ItineraryBuildResult, ItineraryValidationResult
+
+    return ItineraryBuildResult(
+        success=bool(state.get("itinerary_build_success")),
+        itinerary=itinerary_from_state(state),
+        candidate=itinerary_candidate_from_state(state),
+        validation=itinerary_validation_from_state(state)
+        or ItineraryValidationResult(is_valid=False),
+    )
