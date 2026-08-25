@@ -26,6 +26,7 @@ from app.core.current_user import CurrentUser
 from app.db.models.trip import Trip
 from app.db.session import get_db
 from app.llm.factory import build_llm_adapter
+from app.services.agent_run_events import AgentRunEventBus
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
@@ -78,6 +79,11 @@ async def get_owned_trip(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
+
+
+@lru_cache
+def get_agent_run_event_bus() -> AgentRunEventBus:
+    return AgentRunEventBus()
 
 
 @lru_cache
@@ -150,5 +156,6 @@ def get_agent_run_service(
         TripPlannerAgentService,
         Depends(get_trip_planner_agent_service),
     ],
+    event_bus: Annotated[AgentRunEventBus, Depends(get_agent_run_event_bus)],
 ) -> AgentRunService:
-    return AgentRunService(agent_service, registry)
+    return AgentRunService(agent_service, registry, event_bus)

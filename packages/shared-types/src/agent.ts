@@ -170,6 +170,7 @@ export interface AgentRunResponse {
 
 export interface AgentRunCreateRequest {
   message: string;
+  run_id?: string | null;
 }
 
 export interface AgentRunMessageRequest {

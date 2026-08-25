@@ -22,6 +22,10 @@ interface ItineraryTimelineProps {
   itinerary: Itinerary;
   affectedDays?: number[];
   changedItemIds?: string[];
+  selectedDay?: number;
+  selectedItemId?: string | null;
+  onDayChange?: (day: number) => void;
+  onSelectItem?: (itemId: string) => void;
   className?: string;
 }
 
@@ -88,11 +92,15 @@ function ActivityRow({
   leg,
   changed,
   showLocation,
+  selected,
+  onSelect,
 }: {
   item: ItineraryItem;
   leg?: TravelLeg;
   changed: boolean;
   showLocation: boolean;
+  selected?: boolean;
+  onSelect?: (itemId: string) => void;
 }) {
   return (
     <>
@@ -100,12 +108,15 @@ function ActivityRow({
       <motion.li
         layout
         className={cn(
-          "grid gap-2 rounded-lg border border-transparent px-3 py-2.5 transition-colors sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]",
-          changed
-            ? "border-[var(--accent)]/30 bg-[var(--accent)]/5"
-            : "hover:bg-[var(--surface-hover)]",
+          "grid cursor-pointer gap-2 rounded-lg border border-transparent px-3 py-2.5 transition-colors sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]",
+          selected
+            ? "border-[var(--accent)] bg-[var(--accent)]/10"
+            : changed
+              ? "border-[var(--accent)]/30 bg-[var(--accent)]/5"
+              : "hover:bg-[var(--surface-hover)]",
         )}
         data-changed={changed || undefined}
+        onClick={() => onSelect?.(item.item_id)}
       >
         <div className="text-xs font-medium tabular-nums text-[var(--foreground-muted)]">
           {formatTime(item.start_time)}
@@ -151,10 +162,14 @@ function DayContent({
   day,
   affectedDays,
   changedItemIds,
+  selectedItemId,
+  onSelectItem,
 }: {
   day: ItineraryDay;
   affectedDays: number[];
   changedItemIds: string[];
+  selectedItemId?: string | null;
+  onSelectItem?: (itemId: string) => void;
 }) {
   const reduceMotion = useReducedMotion();
   const isAffected = affectedDays.includes(day.day_number);
@@ -208,6 +223,8 @@ function DayContent({
               leg={legsByTo.get(item.item_id)}
               changed={changed}
               showLocation={showLocation}
+              selected={selectedItemId === item.item_id}
+              onSelect={onSelectItem}
             />
           );
         })}
@@ -220,6 +237,10 @@ export function ItineraryTimeline({
   itinerary,
   affectedDays = [],
   changedItemIds = [],
+  selectedDay: selectedDayProp,
+  selectedItemId,
+  onDayChange,
+  onSelectItem,
   className,
 }: ItineraryTimelineProps) {
   const days = itinerary.days;
@@ -230,7 +251,9 @@ export function ItineraryTimeline({
     return days[0]?.day_number ?? 1;
   }, [affectedDays, changedItemIds, days]);
 
-  const [selectedDay, setSelectedDay] = useState(defaultDay);
+  const [internalDay, setInternalDay] = useState(defaultDay);
+  const selectedDay = selectedDayProp ?? internalDay;
+  const setSelectedDay = onDayChange ?? setInternalDay;
   const resolvedDay = days.some((day) => day.day_number === selectedDay)
     ? selectedDay
     : defaultDay;
@@ -277,6 +300,8 @@ export function ItineraryTimeline({
             day={activeDay}
             affectedDays={affectedDays}
             changedItemIds={changedItemIds}
+            selectedItemId={selectedItemId}
+            onSelectItem={onSelectItem}
           />
         </AnimatePresence>
       </div>

@@ -12,3 +12,4 @@ export interface HealthResponse {
 }
 
 export * from "./agent.js";
+export * from "./agent-events.js";

@@ -1,15 +1,18 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect } from "react";
 
 import { FailureBanner } from "@/components/planner/failure-banner";
+import { LivePlanningState } from "@/components/planner/live-planning-state";
 import { PlannerWorkspace } from "@/components/planner/planner-workspace";
-import { PlanningState } from "@/components/planner/planning-state";
 import {
+  usePendingPlannerStart,
   usePlannerErrorMessage,
   usePlannerSession,
   useSendPlannerMessage,
 } from "@/lib/planner/hooks";
+import { loadPendingPlannerStart } from "@/lib/planner/storage";
+import { useAgentRunStream } from "@/lib/planner/use-agent-run-stream";
 
 export default function PlannerRunPage({
   params,
@@ -17,20 +20,27 @@ export default function PlannerRunPage({
   params: Promise<{ runId: string }>;
 }) {
   const { runId } = use(params);
+  const pendingStart = loadPendingPlannerStart(runId);
+  const pendingPlannerStart = usePendingPlannerStart(runId);
   const { data: session, isLoading, isError, error, isFetching } =
-    usePlannerSession(runId);
+    usePlannerSession(runId, { enabled: !pendingStart });
   const sendMessage = useSendPlannerMessage(runId);
-  const [phaseIndex, setPhaseIndex] = useState(0);
-  const phases = [
-    "understanding",
-    "searching",
-    "weather",
-    "building",
-    "budget",
-    "validating",
-  ] as const;
+  const isStarting = pendingPlannerStart.isPending;
+  const isMutating = sendMessage.isPending || isStarting;
+  const { execution } = useAgentRunStream({
+    runId,
+    enabled: isMutating || Boolean(session),
+  });
   const hydrationErrorMessage = usePlannerErrorMessage(error);
-  const mutationErrorMessage = usePlannerErrorMessage(sendMessage.error);
+  const mutationErrorMessage = usePlannerErrorMessage(
+    sendMessage.error ?? pendingPlannerStart.error,
+  );
+
+  useEffect(() => {
+    if (pendingStart && !pendingPlannerStart.isPending && !pendingPlannerStart.isSuccess) {
+      void pendingPlannerStart.mutateAsync();
+    }
+  }, [pendingStart, pendingPlannerStart]);
 
   const planningMode =
     session?.run.operation.operation_type === "modification"
@@ -40,18 +50,10 @@ export default function PlannerRunPage({
         : "initial";
 
   async function handleSendMessage(message: string) {
-    setPhaseIndex(0);
-    const interval = window.setInterval(() => {
-      setPhaseIndex((current) => Math.min(current + 1, phases.length - 1));
-    }, 600);
-    try {
-      await sendMessage.mutateAsync(message);
-    } finally {
-      window.clearInterval(interval);
-    }
+    await sendMessage.mutateAsync(message);
   }
 
-  if (isError) {
+  if (isError && !session) {
     return (
       <FailureBanner
         title="This planning session is unavailable"
@@ -60,10 +62,10 @@ export default function PlannerRunPage({
     );
   }
 
-  if (isLoading && !session) {
+  if ((isLoading || isStarting) && !session) {
     return (
       <div className="mx-auto max-w-2xl">
-        <PlanningState activePhase="understanding" mode="initial" />
+        <LivePlanningState execution={execution} mode="initial" />
       </div>
     );
   }
@@ -79,21 +81,21 @@ export default function PlannerRunPage({
 
   return (
     <div className="space-y-4">
-      {isFetching && !sendMessage.isPending ? (
+      {isFetching && !isMutating ? (
         <p className="text-xs uppercase tracking-[0.16em] text-[var(--foreground-muted)]">
           Refreshing trip state…
         </p>
       ) : null}
-      {sendMessage.isError ? (
+      {sendMessage.isError || pendingPlannerStart.isError ? (
         <p role="alert" className="text-sm text-[var(--budget-over-fg)]">
           {mutationErrorMessage}
         </p>
       ) : null}
       <PlannerWorkspace
         session={session}
-        isMutating={sendMessage.isPending}
-        planningPhase={phases[phaseIndex] ?? "building"}
+        isMutating={isMutating}
         planningMode={planningMode}
+        execution={execution}
         onSendMessage={handleSendMessage}
       />
     </div>

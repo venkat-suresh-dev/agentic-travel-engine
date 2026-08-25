@@ -12,7 +12,10 @@ import { createAgentRun, fetchAgentRun, sendAgentRunMessage } from "@/lib/api/ag
 import { friendlyErrorMessage } from "@/lib/api/errors";
 import { usePlannerToken } from "@/lib/planner/auth";
 import {
+  clearPendingPlannerStart,
+  loadPendingPlannerStart,
   loadPlannerSession,
+  savePendingPlannerStart,
   savePlannerSession,
   type ConversationEntry,
   type PlannerSession,
@@ -34,7 +37,7 @@ function createEntry(
   };
 }
 
-export function usePlannerSession(runId: string) {
+export function usePlannerSession(runId: string, options?: { enabled?: boolean }) {
   const getToken = usePlannerToken();
 
   return useQuery({
@@ -52,21 +55,42 @@ export function usePlannerSession(runId: string) {
     },
     placeholderData: () => loadPlannerSession(runId) ?? undefined,
     staleTime: Infinity,
-    enabled: Boolean(runId),
+    enabled: options?.enabled ?? Boolean(runId),
   });
 }
 
 export function useStartPlannerRun() {
-  const getToken = usePlannerToken();
   const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ message, runId }: { message: string; runId: string }) => {
+      savePendingPlannerStart({ runId, message });
+      return { runId, message };
+    },
+    onSuccess: ({ runId }) => {
+      router.push(`/planner/${runId}`);
+    },
+  });
+}
+
+export function usePendingPlannerStart(runId: string) {
+  const getToken = usePlannerToken();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (message: string) => {
+    mutationKey: ["planner-pending-start", runId],
+    mutationFn: async () => {
+      const pending = loadPendingPlannerStart(runId);
+      if (!pending) {
+        return null;
+      }
       const token = await getToken();
-      const run = await createAgentRun({ message }, token);
+      const run = await createAgentRun(
+        { message: pending.message, run_id: pending.runId },
+        token,
+      );
       const history: ConversationEntry[] = [
-        createEntry("user", "request", message),
+        createEntry("user", "request", pending.message),
         createEntry(
           "system",
           run.status === "needs_clarification" ? "clarification" : "status",
@@ -77,11 +101,13 @@ export function useStartPlannerRun() {
       ];
       const session: PlannerSession = { run, history };
       savePlannerSession(session);
+      clearPendingPlannerStart(runId);
       return session;
     },
     onSuccess: (session) => {
-      queryClient.setQueryData(plannerRunKey(session.run.run_id), session);
-      router.push(`/planner/${session.run.run_id}`);
+      if (session) {
+        queryClient.setQueryData(plannerRunKey(runId), session);
+      }
     },
   });
 }

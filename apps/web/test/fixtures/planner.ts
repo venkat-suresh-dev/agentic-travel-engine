@@ -46,8 +46,8 @@ export const completeRunFixture: AgentRunResponse = {
             title: "Breakfast",
             description: null,
             location_name: "Old Dubai",
-            latitude: null,
-            longitude: null,
+            latitude: 25.2631,
+            longitude: 55.2972,
             cost: {
               amount: "800",
               currency: "INR",
@@ -78,8 +78,8 @@ export const completeRunFixture: AgentRunResponse = {
             title: "Dubai Museum",
             description: null,
             location_name: "Al Fahidi",
-            latitude: null,
-            longitude: null,
+            latitude: 25.2633,
+            longitude: 55.2975,
             cost: {
               amount: "1200",
               currency: "INR",

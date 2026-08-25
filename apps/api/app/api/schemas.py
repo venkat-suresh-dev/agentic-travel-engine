@@ -41,6 +41,7 @@ class AgentRunCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     message: str = Field(min_length=1)
+    run_id: str | None = Field(default=None, min_length=1)
 
 
 class AgentRunMessageRequest(BaseModel):

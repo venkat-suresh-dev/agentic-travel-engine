@@ -21,6 +21,7 @@ from app.api.conversation_schemas import (
 from app.auth.exceptions import AuthorizationError, ResourceNotFoundError
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.itinerary.schemas import Itinerary
+from app.services.agent_run_events import AgentRunEventBus
 from app.services.conversation_mapper import (
     _valid_itinerary,
     build_budget_summary,
@@ -89,24 +90,44 @@ class AgentRunService:
         self,
         agent_service: TripPlannerAgentService,
         registry: AgentRunRegistry,
+        event_bus: AgentRunEventBus | None = None,
     ) -> None:
         self._agent_service = agent_service
         self._registry = registry
+        self._event_bus = event_bus or AgentRunEventBus()
 
-    def start_run(self, user_id: UUID, message: str) -> AgentRunOutcome:
+    @property
+    def event_bus(self) -> AgentRunEventBus:
+        return self._event_bus
+
+    def start_run(
+        self,
+        user_id: UUID,
+        message: str,
+        *,
+        run_id: str | None = None,
+    ) -> AgentRunOutcome:
         """Start a new planning run for the authenticated user."""
-        run_id = str(uuid4())
-        self._registry.register(run_id, user_id)
+        resolved_run_id = run_id or str(uuid4())
+        self._registry.register(resolved_run_id, user_id)
+        publisher = self._event_bus.ensure_run(resolved_run_id)
+        operation_type = ConversationOperationType.INITIAL_PLAN
         try:
-            result = self._agent_service.start(message, thread_id=run_id)
+            result = self._agent_service.start(
+                message,
+                thread_id=resolved_run_id,
+                publisher=publisher,
+                operation_type=operation_type.value,
+            )
         except RequirementExtractionError:
+            publisher.run_failed(message=self._FAILURE_MESSAGE)
             return self._failed_outcome(
-                run_id,
-                operation_type=ConversationOperationType.INITIAL_PLAN,
+                resolved_run_id,
+                operation_type=operation_type,
             )
         return self._map_result(
             result,
-            operation_type=ConversationOperationType.INITIAL_PLAN,
+            operation_type=operation_type,
         )
 
     def resume_run(
@@ -119,9 +140,16 @@ class AgentRunService:
         self._assert_run_access(user_id, run_id)
         prior = self._agent_service.get_state(run_id)
         operation_type = classify_resume_operation(prior)
+        publisher = self._event_bus.ensure_run(run_id)
         try:
-            result = self._agent_service.resume(run_id, message)
+            result = self._agent_service.resume(
+                run_id,
+                message,
+                publisher=publisher,
+                operation_type=operation_type.value,
+            )
         except RequirementExtractionError:
+            publisher.run_failed(message=self._FAILURE_MESSAGE)
             return self._failed_outcome(run_id, operation_type=operation_type)
         return self._map_result(result, operation_type=operation_type)
 
@@ -133,6 +161,9 @@ class AgentRunService:
             raise ResourceNotFoundError("Agent run not found")
         operation_type = infer_snapshot_operation_type(result)
         return self._map_result(result, operation_type=operation_type)
+
+    def assert_run_access(self, user_id: UUID, run_id: str) -> None:
+        self._assert_run_access(user_id, run_id)
 
     def _assert_run_access(self, user_id: UUID, run_id: str) -> None:
         owner_id = self._registry.get_owner(run_id)

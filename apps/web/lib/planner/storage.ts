@@ -2,6 +2,7 @@ import type { AgentRunResponse } from "@agentic-travel-engine/shared-types";
 
 const RUN_PREFIX = "planner-run:";
 const HISTORY_PREFIX = "planner-history:";
+const PENDING_START_PREFIX = "planner-pending-start:";
 
 export interface ConversationEntry {
   id: string;
@@ -66,4 +67,43 @@ export function appendHistoryEntry(
     sessionStorage.setItem(historyKey(runId), JSON.stringify(history));
   }
   return history;
+}
+
+export interface PendingPlannerStart {
+  runId: string;
+  message: string;
+}
+
+export function savePendingPlannerStart(pending: PendingPlannerStart): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  sessionStorage.setItem(
+    `${PENDING_START_PREFIX}${pending.runId}`,
+    JSON.stringify(pending),
+  );
+}
+
+export function loadPendingPlannerStart(
+  runId: string,
+): PendingPlannerStart | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const raw = sessionStorage.getItem(`${PENDING_START_PREFIX}${runId}`);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as PendingPlannerStart;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingPlannerStart(runId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  sessionStorage.removeItem(`${PENDING_START_PREFIX}${runId}`);
 }

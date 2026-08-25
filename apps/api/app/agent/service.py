@@ -56,6 +56,7 @@ from app.agent.state import (
     weather_forecast_from_state,
     weather_metadata_from_state,
 )
+from app.agent.streaming import invoke_with_optional_events
 from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.itinerary.composer.base import ItineraryComposer
@@ -63,6 +64,7 @@ from app.itinerary.composer.fake import FakeItineraryComposer
 from app.itinerary.critic.schemas import CriticResult
 from app.itinerary.schemas import ItineraryBuildResult
 from app.llm.base import LLMAdapter
+from app.services.agent_run_events import AgentRunEventPublisher
 from app.tools.attractions import AttractionTool
 from app.tools.currency import CurrencyTool
 from app.tools.distance import DistanceTool
@@ -149,23 +151,42 @@ class TripPlannerAgentService:
         user_request: str,
         *,
         thread_id: str | None = None,
+        publisher: AgentRunEventPublisher | None = None,
+        operation_type: str | None = None,
     ) -> TripPlannerRunResult:
         """Run the graph for a new planning request."""
         resolved_thread_id = thread_id or str(uuid4())
         graph_input: AgentInput = {"user_request": user_request}
         config: RunnableConfig = {"configurable": {"thread_id": resolved_thread_id}}
-        state = self._invoke(graph_input, config)
+        state = invoke_with_optional_events(
+            self,
+            graph_input,
+            config,
+            publisher,
+            operation_type=operation_type,
+            fallback=lambda: self._invoke(graph_input, config),
+        )
         return self._to_result(resolved_thread_id, state)
 
     def resume(
         self,
         thread_id: str,
         user_clarification: str,
+        *,
+        publisher: AgentRunEventPublisher | None = None,
+        operation_type: str | None = None,
     ) -> TripPlannerRunResult:
         """Resume a paused graph thread with additional user clarification."""
         graph_input: AgentInput = {"user_clarification": user_clarification}
         config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
-        state = self._invoke(graph_input, config)
+        state = invoke_with_optional_events(
+            self,
+            graph_input,
+            config,
+            publisher,
+            operation_type=operation_type,
+            fallback=lambda: self._invoke(graph_input, config),
+        )
         return self._to_result(thread_id, state)
 
     def get_state(self, thread_id: str) -> TripPlannerRunResult | None:
