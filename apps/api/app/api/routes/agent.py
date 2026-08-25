@@ -42,7 +42,7 @@ async def submit_agent_run_message(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     agent_run_service: Annotated[AgentRunService, Depends(get_agent_run_service)],
 ) -> AgentRunResponse:
-    """Submit clarification text and resume an existing planning run."""
+    """Submit clarification or completed-plan modification for an existing run."""
     try:
         outcome = agent_run_service.resume_run(
             current_user.id,

@@ -181,3 +181,63 @@ provider
 ## Dependencies
 
 - `langgraph==1.2.11`
+
+## Conversation API lifecycle (Phase 6B)
+
+The authenticated agent API exposes the full planning conversation through two endpoints:
+
+```text
+POST /api/agent/runs
+POST /api/agent/runs/{run_id}/messages
+```
+
+### Lifecycle
+
+```text
+initial request
+    ↓
+clarification if incomplete (needs_clarification)
+    ↓
+completed plan (complete)
+    ↓
+follow-up modification message
+    ↓
+selective refresh (when required)
+    ↓
+critic
+    ↓
+updated plan (complete) or failed modification (failed, prior plan preserved)
+```
+
+### Clarification vs modification
+
+Classification uses persisted run state, not natural-language heuristics alone:
+
+| Run state | Follow-up message routes to |
+| --- | --- |
+| `awaiting_user` / incomplete validation | **clarification** (`extract_requirements`) |
+| `planning_failed` without valid itinerary | **clarification** (safest resume path) |
+| Valid approved `itinerary`, `planning_failed = false` | **modification** (`extract_modification`) |
+
+The API exposes `operation.operation_type` as `initial_plan`, `clarification`, or `modification`.
+
+### Response contract
+
+`AgentRunResponse` includes typed fields for Phase 7 consumers:
+
+- `status`: `complete` / `needs_clarification` / `failed`
+- `operation`: structured `OperationResult` (affected days, refreshed sources, budget flag)
+- `itinerary`: only when a valid approved itinerary exists
+- `budget`, `critic`, `tool_availability`: summaries when available
+- `planning_failure` / `modification_failure`: structured failure metadata
+- `error`: safe user-facing message (no exception traces)
+
+Raw LangGraph state is never returned.
+
+### Failure safety
+
+Failed modifications restore `previous_itinerary` internally and return `status = failed` with `modification_failure.preserved_itinerary = true`. The client still receives the last valid itinerary.
+
+### Persistence limitation
+
+`AgentRunRegistry` and LangGraph `InMemorySaver` are **process-local**. Run checkpoints and ownership mappings do not survive API process restarts. Durable checkpointing is out of scope for Phase 6B.

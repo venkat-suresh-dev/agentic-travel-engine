@@ -1,11 +1,20 @@
 from datetime import date
 from decimal import Decimal
-from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.conversation_schemas import (
+    AgentRunStatusResponse,
+    BudgetSummaryResponse,
+    CriticSummaryResponse,
+    ModificationFailureResponse,
+    OperationResultResponse,
+    PlanningFailureResponse,
+    ToolAvailabilityResponse,
+)
 from app.domain.trip_request import TripType
+from app.itinerary.schemas import Itinerary
 from app.services.agent_runs import AgentRunOutcome
 
 
@@ -26,12 +35,6 @@ class UserResponse(BaseModel):
 class TripOwnershipResponse(BaseModel):
     trip_id: UUID
     owned: bool
-
-
-class AgentRunStatusResponse(StrEnum):
-    COMPLETE = "complete"
-    NEEDS_CLARIFICATION = "needs_clarification"
-    FAILED = "failed"
 
 
 class AgentRunCreateRequest(BaseModel):
@@ -74,9 +77,16 @@ class AgentRunResponse(BaseModel):
 
     status: AgentRunStatusResponse
     run_id: str
+    operation: OperationResultResponse
     trip_request: TripRequestResponse | None = None
     missing_fields: list[str] = Field(default_factory=list)
     clarification: ClarificationResponse | None = None
+    itinerary: Itinerary | None = None
+    budget: BudgetSummaryResponse | None = None
+    critic: CriticSummaryResponse | None = None
+    tool_availability: ToolAvailabilityResponse | None = None
+    planning_failure: PlanningFailureResponse | None = None
+    modification_failure: ModificationFailureResponse | None = None
     error: str | None = None
 
 
@@ -93,6 +103,7 @@ def agent_run_outcome_to_response(outcome: AgentRunOutcome) -> AgentRunResponse:
     return AgentRunResponse(
         status=AgentRunStatusResponse(outcome.status.value),
         run_id=outcome.run_id,
+        operation=outcome.operation,
         trip_request=trip_request_to_response(outcome.trip_request),
         missing_fields=list(outcome.missing_fields),
         clarification=(
@@ -104,5 +115,11 @@ def agent_run_outcome_to_response(outcome: AgentRunOutcome) -> AgentRunResponse:
             if clarification is not None
             else None
         ),
+        itinerary=outcome.itinerary,
+        budget=outcome.budget,
+        critic=outcome.critic,
+        tool_availability=outcome.tool_availability,
+        planning_failure=outcome.planning_failure,
+        modification_failure=outcome.modification_failure,
         error=outcome.error,
     )

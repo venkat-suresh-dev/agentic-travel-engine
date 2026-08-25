@@ -201,6 +201,39 @@ Content-Type: application/json
 
 Resumes the same graph checkpoint, merges new information into the existing `trip_request`, and re-runs validation. Multiple clarification turns are supported until requirements are complete.
 
+When the run already has a valid completed itinerary, the same endpoint routes through selective modification (Phase 6A) instead of restarting full planning.
+
+### Conversation lifecycle (Phase 6B)
+
+```text
+POST /api/agent/runs → initial planning
+    ↓
+needs_clarification → clarification messages on /runs/{run_id}/messages
+    ↓
+complete itinerary
+    ↓
+follow-up /runs/{run_id}/messages → modification (selective refresh → critic)
+    ↓
+updated itinerary or failed modification with prior plan preserved
+```
+
+Responses expose typed `operation.operation_type`:
+
+| Value | When |
+| --- | --- |
+| `initial_plan` | First message on a new run |
+| `clarification` | Follow-up while requirements are incomplete (`awaiting_user`) |
+| `modification` | Follow-up when a valid itinerary already exists |
+
+Additional response fields for clients:
+
+- `operation`: affected days, refreshed sources, `budget_changed`, summary
+- `itinerary`: approved itinerary only (including preserved plan after failed modification)
+- `budget`, `critic`, `tool_availability`: structured summaries
+- `planning_failure` / `modification_failure`: safe failure metadata
+
+Raw LangGraph state and exception traces are never returned.
+
 ### Ownership and persistence
 
 - Each run is associated with the authenticated application user at creation time.

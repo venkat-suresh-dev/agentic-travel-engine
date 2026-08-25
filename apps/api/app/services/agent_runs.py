@@ -3,23 +3,37 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from threading import Lock
 from uuid import UUID, uuid4
 
 from app.agent.exceptions import RequirementExtractionError
 from app.agent.service import TripPlannerAgentService, TripPlannerRunResult
-from app.agent.state import GraphStatus
+from app.api.conversation_schemas import (
+    AgentRunStatusResponse,
+    BudgetSummaryResponse,
+    ConversationOperationType,
+    CriticSummaryResponse,
+    ModificationFailureResponse,
+    OperationResultResponse,
+    PlanningFailureResponse,
+    ToolAvailabilityResponse,
+)
 from app.auth.exceptions import AuthorizationError, ResourceNotFoundError
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.itinerary.schemas import Itinerary
+from app.services.conversation_mapper import (
+    _valid_itinerary,
+    build_budget_summary,
+    build_critic_summary,
+    build_modification_failure,
+    build_operation_result,
+    build_planning_failure,
+    build_tool_availability,
+    classify_resume_operation,
+    resolve_run_status,
+)
 
-
-class AgentRunStatus(StrEnum):
-    """Public API lifecycle status for an agent run."""
-
-    COMPLETE = "complete"
-    NEEDS_CLARIFICATION = "needs_clarification"
-    FAILED = "failed"
+AgentRunStatus = AgentRunStatusResponse
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +46,13 @@ class AgentRunOutcome:
     missing_fields: tuple[str, ...]
     clarification: ClarificationRequest | None
     error: str | None
+    operation: OperationResultResponse
+    itinerary: Itinerary | None
+    budget: BudgetSummaryResponse | None
+    critic: CriticSummaryResponse | None
+    tool_availability: ToolAvailabilityResponse | None
+    planning_failure: PlanningFailureResponse | None
+    modification_failure: ModificationFailureResponse | None
 
 
 class AgentRunRegistry:
@@ -78,8 +99,14 @@ class AgentRunService:
         try:
             result = self._agent_service.start(message, thread_id=run_id)
         except RequirementExtractionError:
-            return self._failed_outcome(run_id)
-        return self._map_result(result)
+            return self._failed_outcome(
+                run_id,
+                operation_type=ConversationOperationType.INITIAL_PLAN,
+            )
+        return self._map_result(
+            result,
+            operation_type=ConversationOperationType.INITIAL_PLAN,
+        )
 
     def resume_run(
         self,
@@ -87,13 +114,15 @@ class AgentRunService:
         run_id: str,
         message: str,
     ) -> AgentRunOutcome:
-        """Resume an existing planning run after user clarification."""
+        """Resume an existing planning run after clarification or modification."""
         self._assert_run_access(user_id, run_id)
+        prior = self._agent_service.get_state(run_id)
+        operation_type = classify_resume_operation(prior)
         try:
             result = self._agent_service.resume(run_id, message)
         except RequirementExtractionError:
-            return self._failed_outcome(run_id)
-        return self._map_result(result)
+            return self._failed_outcome(run_id, operation_type=operation_type)
+        return self._map_result(result, operation_type=operation_type)
 
     def _assert_run_access(self, user_id: UUID, run_id: str) -> None:
         owner_id = self._registry.get_owner(run_id)
@@ -102,47 +131,115 @@ class AgentRunService:
         if owner_id != user_id:
             raise AuthorizationError("Agent run belongs to another user")
 
-    def _map_result(self, result: TripPlannerRunResult) -> AgentRunOutcome:
+    def _map_result(
+        self,
+        result: TripPlannerRunResult,
+        *,
+        operation_type: ConversationOperationType,
+    ) -> AgentRunOutcome:
         missing_fields = self._missing_fields(result.validation)
-        if result.status == GraphStatus.COMPLETE:
-            return AgentRunOutcome(
-                status=AgentRunStatus.COMPLETE,
-                run_id=result.thread_id,
-                trip_request=result.trip_request,
-                missing_fields=missing_fields,
-                clarification=None,
-                error=None,
-            )
-        if result.status == GraphStatus.AWAITING_USER:
-            return AgentRunOutcome(
-                status=AgentRunStatus.NEEDS_CLARIFICATION,
-                run_id=result.thread_id,
-                trip_request=result.trip_request,
-                missing_fields=missing_fields,
-                clarification=result.clarification,
-                error=None,
-            )
+        itinerary = _valid_itinerary(result)
+        status = resolve_run_status(result, itinerary=itinerary)
+        operation = build_operation_result(
+            result,
+            operation_type=operation_type,
+            status=status,
+            itinerary=itinerary,
+        )
+        planning_failure = build_planning_failure(result)
+        modification_failure = build_modification_failure(result)
+        error = self._resolve_error(
+            status=status,
+            planning_failure=planning_failure,
+            modification_failure=modification_failure,
+        )
         return AgentRunOutcome(
-            status=AgentRunStatus.FAILED,
+            status=status,
             run_id=result.thread_id,
             trip_request=result.trip_request,
             missing_fields=missing_fields,
-            clarification=result.clarification,
-            error=self._FAILURE_MESSAGE,
+            clarification=(
+                result.clarification
+                if status == AgentRunStatus.NEEDS_CLARIFICATION
+                else None
+            ),
+            error=error,
+            operation=operation,
+            itinerary=itinerary,
+            budget=build_budget_summary(result.budget_result),
+            critic=build_critic_summary(result),
+            tool_availability=build_tool_availability(result),
+            planning_failure=planning_failure,
+            modification_failure=modification_failure,
         )
 
-    def _failed_outcome(self, run_id: str) -> AgentRunOutcome:
+    def _failed_outcome(
+        self,
+        run_id: str,
+        *,
+        operation_type: ConversationOperationType,
+    ) -> AgentRunOutcome:
         checkpointed = self._agent_service.get_state(run_id)
-        return AgentRunOutcome(
-            status=AgentRunStatus.FAILED,
-            run_id=run_id,
-            trip_request=checkpointed.trip_request if checkpointed else None,
-            missing_fields=self._missing_fields(
-                checkpointed.validation if checkpointed else None
-            ),
-            clarification=checkpointed.clarification if checkpointed else None,
-            error=self._FAILURE_MESSAGE,
+        if checkpointed is None:
+            operation = OperationResultResponse(
+                operation_type=operation_type,
+                status=AgentRunStatusResponse.FAILED,
+                summary="Requirement extraction failed.",
+            )
+            return AgentRunOutcome(
+                status=AgentRunStatus.FAILED,
+                run_id=run_id,
+                trip_request=None,
+                missing_fields=(),
+                clarification=None,
+                error=self._FAILURE_MESSAGE,
+                operation=operation,
+                itinerary=None,
+                budget=None,
+                critic=None,
+                tool_availability=None,
+                planning_failure=None,
+                modification_failure=None,
+            )
+
+        itinerary = _valid_itinerary(checkpointed)
+        status = AgentRunStatus.FAILED
+        operation = build_operation_result(
+            checkpointed,
+            operation_type=operation_type,
+            status=status,
+            itinerary=itinerary,
         )
+        return AgentRunOutcome(
+            status=status,
+            run_id=run_id,
+            trip_request=checkpointed.trip_request,
+            missing_fields=self._missing_fields(checkpointed.validation),
+            clarification=checkpointed.clarification,
+            error=self._FAILURE_MESSAGE,
+            operation=operation,
+            itinerary=itinerary,
+            budget=build_budget_summary(checkpointed.budget_result),
+            critic=build_critic_summary(checkpointed),
+            tool_availability=build_tool_availability(checkpointed),
+            planning_failure=build_planning_failure(checkpointed),
+            modification_failure=build_modification_failure(checkpointed),
+        )
+
+    @staticmethod
+    def _resolve_error(
+        *,
+        status: AgentRunStatus,
+        planning_failure: PlanningFailureResponse | None,
+        modification_failure: ModificationFailureResponse | None,
+    ) -> str | None:
+        if status != AgentRunStatus.FAILED:
+            return None
+        if modification_failure is not None:
+            return modification_failure.message
+        if planning_failure is not None:
+            return planning_failure.message
+        return AgentRunService._FAILURE_MESSAGE
 
     @staticmethod
     def _missing_fields(validation: ValidationResult | None) -> tuple[str, ...]:
