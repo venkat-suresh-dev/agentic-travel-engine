@@ -117,3 +117,18 @@ pnpm test
 ```bash
 uv run pytest
 ```
+
+## Trip planner agent (Phase 2A)
+
+The LangGraph orchestration foundation lives in `app/agent/`. See `app/agent/README.md` for graph topology, state model, routing, and resume behavior.
+
+Invoke the graph through `TripPlannerAgentService` rather than importing node internals directly:
+
+```python
+from app.agent import TripPlannerAgentService
+
+service = TripPlannerAgentService()
+result = service.start("Plan a 5-day trip to Dubai for 2 people.")
+```
+
+Phase 2A uses deterministic placeholder extraction. Real LLM-based extraction is deferred to Phase 2B.
