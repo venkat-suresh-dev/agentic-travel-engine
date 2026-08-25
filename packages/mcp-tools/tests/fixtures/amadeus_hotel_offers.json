@@ -1,0 +1,108 @@
+{
+  "data": [
+    {
+      "type": "hotel-offers",
+      "hotel": {
+        "type": "hotel",
+        "hotelId": "HLDXB123",
+        "chainCode": "HL",
+        "name": "Sample Dubai Marina Hotel",
+        "cityCode": "DXB",
+        "latitude": 25.0805,
+        "longitude": 55.1403,
+        "address": {
+          "lines": ["Marina Walk"],
+          "cityName": "Dubai",
+          "countryCode": "AE"
+        }
+      },
+      "available": true,
+      "offers": [
+        {
+          "id": "OFFER-1",
+          "checkInDate": "2026-12-01",
+          "checkOutDate": "2026-12-06",
+          "room": {
+            "type": "A1K",
+            "typeEstimated": {
+              "category": "DELUXE_ROOM"
+            },
+            "description": {
+              "text": "Deluxe room with marina view",
+              "lang": "EN"
+            }
+          },
+          "price": {
+            "currency": "AED",
+            "base": "450.00",
+            "total": "2250.00",
+            "variations": {
+              "average": {
+                "base": "450.00"
+              }
+            }
+          }
+        },
+        {
+          "id": "OFFER-2",
+          "checkInDate": "2026-12-01",
+          "checkOutDate": "2026-12-06",
+          "room": {
+            "type": "B2Q",
+            "typeEstimated": {
+              "category": "STANDARD_ROOM"
+            },
+            "description": {
+              "text": "Standard room",
+              "lang": "EN"
+            }
+          },
+          "price": {
+            "currency": "AED",
+            "base": "320.00",
+            "total": "1600.00",
+            "variations": {
+              "average": {
+                "base": "320.00"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "hotel-offers",
+      "hotel": {
+        "type": "hotel",
+        "hotelId": "ADDXB456",
+        "chainCode": "AD",
+        "name": "Sample Downtown Hotel",
+        "cityCode": "DXB",
+        "latitude": 25.1972,
+        "longitude": 55.2744
+      },
+      "available": true,
+      "offers": [
+        {
+          "id": "OFFER-3",
+          "checkInDate": "2026-12-01",
+          "checkOutDate": "2026-12-06",
+          "room": {
+            "type": "C1D",
+            "typeEstimated": {
+              "category": "SUPERIOR_ROOM"
+            },
+            "description": {
+              "text": "Superior room downtown",
+              "lang": "EN"
+            }
+          },
+          "price": {
+            "currency": "AED",
+            "total": "1900.00"
+          }
+        }
+      ]
+    }
+  ]
+}

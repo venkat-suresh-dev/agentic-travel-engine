@@ -1,0 +1,1 @@
+"""Hotel provider implementations."""

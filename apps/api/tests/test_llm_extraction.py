@@ -15,11 +15,13 @@ from app.domain.trip_request import TripRequest
 from app.llm.anthropic import AnthropicLLMAdapter
 from app.llm.exceptions import LLMProviderError, LLMStructuredOutputError
 from app.tools.flights import FlightTool
+from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 from pydantic import BaseModel
 
 from tests.fakes.extract_stub import extract_from_text
 from tests.fakes.flights_providers import FakeAirportCodeResolver
+from tests.fakes.hotels_providers import FakeCityCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
 
 T = TypeVar("T", bound=BaseModel)
@@ -44,12 +46,16 @@ def agent_service(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
 
 

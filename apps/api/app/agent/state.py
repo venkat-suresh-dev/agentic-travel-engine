@@ -6,6 +6,7 @@ from enum import StrEnum
 from typing import TypedDict
 
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
+from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
@@ -36,6 +37,8 @@ class AgentState(TypedDict, total=False):
     weather_tool_metadata: dict[str, object] | None
     flight_search: dict[str, object] | None
     flight_tool_metadata: dict[str, object] | None
+    hotel_search: dict[str, object] | None
+    hotel_tool_metadata: dict[str, object] | None
     status: str
 
 
@@ -94,3 +97,17 @@ def flight_metadata_from_state(state: AgentState) -> FlightToolMetadata | None:
     if raw is None:
         return None
     return FlightToolMetadata.model_validate(raw)
+
+
+def hotel_search_from_state(state: AgentState) -> HotelSearchResult | None:
+    raw = state.get("hotel_search")
+    if raw is None:
+        return None
+    return HotelSearchResult.model_validate(raw)
+
+
+def hotel_metadata_from_state(state: AgentState) -> HotelToolMetadata | None:
+    raw = state.get("hotel_tool_metadata")
+    if raw is None:
+        return None
+    return HotelToolMetadata.model_validate(raw)

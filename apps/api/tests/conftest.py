@@ -17,6 +17,7 @@ from testcontainers.community.postgres import PostgresContainer
 pytest_plugins = [
     "tests.fakes.weather",
     "tests.fakes.flights",
+    "tests.fakes.hotels",
     "tests.fakes.llm_fixtures",
 ]
 

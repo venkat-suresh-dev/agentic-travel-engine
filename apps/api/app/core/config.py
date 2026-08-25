@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     amadeus_base_url: str = "https://test.api.amadeus.com"
     flights_request_timeout_seconds: float = 5.0
     flights_cache_ttl_seconds: int = 300
+    hotels_request_timeout_seconds: float = 5.0
+    hotels_cache_ttl_seconds: int = 120
 
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod

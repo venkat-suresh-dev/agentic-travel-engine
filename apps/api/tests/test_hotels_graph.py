@@ -1,4 +1,4 @@
-"""Graph integration tests for the weather vertical slice."""
+"""Graph integration tests for the hotel vertical slice."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ COMPLETE_REQUEST = (
 INCOMPLETE_REQUEST = "Plan a 5-day trip to Dubai for 2 people."
 
 
-def test_complete_request_stores_weather_in_graph_state(
+def test_complete_request_stores_hotels_in_graph_state(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -35,18 +35,19 @@ def test_complete_request_stores_weather_in_graph_state(
         city_resolver=fake_city_resolver,
     )
 
-    result = service.start(COMPLETE_REQUEST, thread_id="weather-complete")
+    result = service.start(COMPLETE_REQUEST, thread_id="hotels-complete")
 
     assert result.status == GraphStatus.COMPLETE
     assert result.weather_forecast is not None
-    assert result.weather_forecast.data_status.value == "live"
-    assert result.weather_forecast.forecast
-    assert result.weather_tool_metadata is not None
-    assert result.weather_tool_metadata.tool_name == "get_weather_forecast"
-    assert result.weather_tool_metadata.provider == "open-meteo"
+    assert result.flight_search is not None
+    assert result.hotel_search is not None
+    assert result.hotel_search.data_status.value == "live"
+    assert result.hotel_search.hotels
+    assert result.hotel_tool_metadata is not None
+    assert result.hotel_tool_metadata.tool_name == "search_hotels"
 
 
-def test_incomplete_request_does_not_fetch_weather(
+def test_incomplete_request_does_not_fetch_hotels(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -63,8 +64,8 @@ def test_incomplete_request_does_not_fetch_weather(
         city_resolver=fake_city_resolver,
     )
 
-    result = service.start(INCOMPLETE_REQUEST, thread_id="weather-incomplete")
+    result = service.start(INCOMPLETE_REQUEST, thread_id="hotels-incomplete")
 
     assert result.status == GraphStatus.AWAITING_USER
-    assert result.weather_forecast is None
-    assert result.weather_tool_metadata is None
+    assert result.hotel_search is None
+    assert result.hotel_tool_metadata is None

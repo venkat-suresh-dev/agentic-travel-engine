@@ -16,6 +16,7 @@ from app.main import create_app
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.users import resolve_or_create_user
 from app.tools.flights import FlightTool
+from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -23,6 +24,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.fakes.flights_providers import FakeAirportCodeResolver
+from tests.fakes.hotels_providers import FakeCityCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
 from tests.test_auth import FakeAuthVerifier
 
@@ -49,6 +51,8 @@ def agent_service(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -56,6 +60,8 @@ def agent_service(
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
 
 

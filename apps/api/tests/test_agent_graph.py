@@ -14,11 +14,13 @@ from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.tools.flights import FlightTool
+from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 from pydantic import ValidationError
 
 from tests.fakes.extract_stub import extract_from_text
 from tests.fakes.flights_providers import FakeAirportCodeResolver
+from tests.fakes.hotels_providers import FakeCityCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
 
 COMPLETE_REQUEST = (
@@ -38,12 +40,16 @@ def agent_service(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
 
 
@@ -279,6 +285,8 @@ def test_graph_is_integration_testable_end_to_end(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> None:
     from langchain_core.runnables import RunnableConfig
 
@@ -287,6 +295,8 @@ def test_graph_is_integration_testable_end_to_end(
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)

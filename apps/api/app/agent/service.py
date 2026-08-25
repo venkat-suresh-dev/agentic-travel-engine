@@ -11,6 +11,8 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
+from mcp_tools.hotels.locations.base import CityCodeResolver
+from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
 
 from app.agent.graph import CompiledTripPlannerGraph, compile_trip_planner_graph
@@ -21,6 +23,8 @@ from app.agent.state import (
     clarification_from_state,
     flight_metadata_from_state,
     flight_search_from_state,
+    hotel_metadata_from_state,
+    hotel_search_from_state,
     trip_request_from_state,
     validation_from_state,
     weather_forecast_from_state,
@@ -29,6 +33,7 @@ from app.agent.state import (
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.llm.base import LLMAdapter
 from app.tools.flights import FlightTool
+from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 
 
@@ -45,6 +50,8 @@ class TripPlannerRunResult:
     weather_tool_metadata: WeatherToolMetadata | None
     flight_search: FlightSearchResult | None
     flight_tool_metadata: FlightToolMetadata | None
+    hotel_search: HotelSearchResult | None
+    hotel_tool_metadata: HotelToolMetadata | None
     state: AgentState
 
 
@@ -59,6 +66,8 @@ class TripPlannerAgentService:
         weather_tool: WeatherTool | None = None,
         flight_tool: FlightTool | None = None,
         airport_resolver: AirportCodeResolver | None = None,
+        hotel_tool: HotelTool | None = None,
+        city_resolver: CityCodeResolver | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
@@ -67,6 +76,8 @@ class TripPlannerAgentService:
             weather_tool=weather_tool,
             flight_tool=flight_tool,
             airport_resolver=airport_resolver,
+            hotel_tool=hotel_tool,
+            city_resolver=city_resolver,
         )
 
     def start(
@@ -118,5 +129,7 @@ class TripPlannerAgentService:
             weather_tool_metadata=weather_metadata_from_state(state),
             flight_search=flight_search_from_state(state),
             flight_tool_metadata=flight_metadata_from_state(state),
+            hotel_search=hotel_search_from_state(state),
+            hotel_tool_metadata=hotel_metadata_from_state(state),
             state=state,
         )

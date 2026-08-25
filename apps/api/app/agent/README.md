@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → search_flights → END
+  ├── complete → fetch_weather → search_flights → search_hotels → END
   └── incomplete → ask_user → END
 ```
 
@@ -32,6 +32,8 @@ Important fields:
 | `weather_tool_metadata` | Tool-call provenance for weather |
 | `flight_search` | Normalized flight offers from the MCP flight tool |
 | `flight_tool_metadata` | Tool-call provenance for flights |
+| `hotel_search` | Normalized hotel offers from the MCP hotel tool |
+| `hotel_tool_metadata` | Tool-call provenance for hotels |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -69,6 +71,16 @@ Structured domain models live in `app/domain/trip_request.py`.
 - Stores normalized offers and tool metadata in graph state.
 - Results are search snapshots only — not booking guarantees.
 - Does **not** let the LLM invent flight prices or schedules.
+
+### `search_hotels` (Phase 3C)
+
+- Invoked only after flight search on the complete-request path.
+- Builds a deterministic `HotelSearchRequest` from validated `TripRequest` fields.
+- Resolves destination to an IATA city code via `CityCodeResolver`.
+- Calls `HotelTool` → `HotelService` → Amadeus Hotel List + Hotel Search.
+- Stores normalized hotel offers and tool metadata in graph state.
+- Results are search snapshots only — not booking or availability guarantees.
+- Does **not** let the LLM invent hotel prices, ratings, or room availability.
 
 ### `ask_user`
 
@@ -148,9 +160,25 @@ Amadeus auth + Flight Offers Search
 
 See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
 
+## Hotel tool boundary (Phase 3C)
+
+```text
+search_hotels node
+    ↓
+HotelTool (apps/api)
+    ↓
+HotelService (packages/mcp-tools)
+    ↓
+MCP search_hotels
+    ↓
+Amadeus auth + Hotel List + Hotel Search
+```
+
+See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
+
 ## Deferred to later phases
 
-- Additional MCP tools (hotels, restaurants, attractions, maps, currency conversion)
+- Additional MCP tools (restaurants, attractions, maps, currency conversion)
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
 - Langfuse tracing

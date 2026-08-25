@@ -5,9 +5,11 @@ from __future__ import annotations
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import GraphStatus
 from app.tools.flights import FlightTool
+from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 
 from tests.fakes.flights_providers import FakeAirportCodeResolver
+from tests.fakes.hotels_providers import FakeCityCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
 
 COMPLETE_REQUEST = (
@@ -21,12 +23,16 @@ def test_complete_request_stores_flights_in_graph_state(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
 
     result = service.start(COMPLETE_REQUEST, thread_id="flights-complete")
@@ -45,12 +51,16 @@ def test_incomplete_request_does_not_fetch_flights(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
+    fake_hotel_tool: HotelTool,
+    fake_city_resolver: FakeCityCodeResolver,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
         flight_tool=fake_flight_tool,
         airport_resolver=fake_airport_resolver,
+        hotel_tool=fake_hotel_tool,
+        city_resolver=fake_city_resolver,
     )
 
     result = service.start(INCOMPLETE_REQUEST, thread_id="flights-incomplete")
