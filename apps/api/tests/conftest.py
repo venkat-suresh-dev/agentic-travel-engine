@@ -38,7 +38,7 @@ def _to_async_database_url(url: str) -> str:
 
 @pytest.fixture(scope="session")
 def postgres_container() -> Generator[PostgresContainer]:
-    with PostgresContainer("postgres:18.6-alpine") as postgres:
+    with PostgresContainer("pgvector/pgvector:pg18") as postgres:
         yield postgres
 
 

@@ -10,7 +10,7 @@ from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
-from app.agent.routing import route_after_validation
+from app.agent.routing import route_after_retrieve_context, route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
@@ -178,7 +178,7 @@ def test_route_after_validation_routes_incomplete_to_ask_user() -> None:
     assert route_after_validation(state) == "ask_user"
 
 
-def test_route_after_validation_routes_complete_to_parallel_fan_out() -> None:
+def test_route_after_validation_routes_complete_to_retrieve_context() -> None:
     state: AgentState = {
         "validation": ValidationResult(
             is_complete=True,
@@ -186,7 +186,11 @@ def test_route_after_validation_routes_complete_to_parallel_fan_out() -> None:
         ).model_dump(mode="json"),
     }
 
-    routes = route_after_validation(state)
+    assert route_after_validation(state) == "retrieve_context"
+
+
+def test_route_after_retrieve_context_routes_to_parallel_fan_out() -> None:
+    routes = route_after_retrieve_context({})
     assert isinstance(routes, list)
     assert len(routes) == len(INDEPENDENT_TOOL_NODE_NAMES)
     assert {route.node for route in routes} == set(INDEPENDENT_TOOL_NODE_NAMES)

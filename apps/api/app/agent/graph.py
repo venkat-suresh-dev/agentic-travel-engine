@@ -21,6 +21,7 @@ from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
 from app.agent.nodes.finalize_run import build_finalize_run_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
+from app.agent.nodes.retrieve_context import build_retrieve_context_node
 from app.agent.nodes.search_attractions import build_search_attractions_node
 from app.agent.nodes.search_flights import build_search_flights_node
 from app.agent.nodes.search_hotels import build_search_hotels_node
@@ -28,11 +29,12 @@ from app.agent.nodes.search_restaurants import build_search_restaurants_node
 from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
 from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
-from app.agent.routing import route_after_validation
+from app.agent.routing import route_after_retrieve_context, route_after_validation
 from app.agent.state import AgentInput, AgentState
 from app.core.config import Settings, settings
 from app.llm.base import LLMAdapter
 from app.llm.factory import build_llm_adapter
+from app.rag.service import RAGRetriever
 from app.tools.attractions import AttractionTool
 from app.tools.currency import CurrencyTool
 from app.tools.currency_factory import build_currency_tool
@@ -62,6 +64,7 @@ def build_trip_planner_graph(
     attraction_tool: AttractionTool | None = None,
     currency_tool: CurrencyTool | None = None,
     tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
+    rag_retriever: RAGRetriever | None = None,
     config: Settings | None = None,
 ) -> StateGraph[AgentState, None, AgentInput, AgentState]:
     """Construct extract → validate → parallel tool fan-out graph."""
@@ -90,6 +93,10 @@ def build_trip_planner_graph(
         cast(Any, build_extract_requirements_node(adapter)),
     )
     builder.add_node("validate_requirements", validate_requirements)
+    builder.add_node(
+        "retrieve_context",
+        cast(Any, build_retrieve_context_node(rag_retriever)),
+    )
     builder.add_node("ask_user", ask_user)
     builder.add_node(
         "fetch_weather",
@@ -130,7 +137,12 @@ def build_trip_planner_graph(
     builder.add_conditional_edges(
         "validate_requirements",
         route_after_validation,
-        ["ask_user"],
+        ["retrieve_context", "ask_user"],
+    )
+    builder.add_conditional_edges(
+        "retrieve_context",
+        route_after_retrieve_context,
+        list(INDEPENDENT_TOOL_NODE_NAMES),
     )
     builder.add_edge("ask_user", END)
 
@@ -157,6 +169,7 @@ def compile_trip_planner_graph(
     attraction_tool: AttractionTool | None = None,
     currency_tool: CurrencyTool | None = None,
     tool_concurrency_limiter: ToolConcurrencyLimiter | None = None,
+    rag_retriever: RAGRetriever | None = None,
     config: Settings | None = None,
 ) -> CompiledTripPlannerGraph:
     """Compile the trip planner graph with an optional checkpoint backend."""
@@ -174,6 +187,7 @@ def compile_trip_planner_graph(
         attraction_tool=attraction_tool,
         currency_tool=currency_tool,
         tool_concurrency_limiter=tool_concurrency_limiter,
+        rag_retriever=rag_retriever,
         config=config,
     ).compile(
         checkpointer=saver,

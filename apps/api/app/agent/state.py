@@ -69,6 +69,8 @@ class AgentState(TypedDict, total=False):
     tool_fan_out_started_at: str | None
     aggregate_run_status: str | None
     tool_orchestration_summary: dict[str, object] | None
+    retrieved_context: dict[str, object] | None
+    retrieved_context_formatted: str | None
     status: str
 
 

@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     currency_cache_ttl_seconds: int = 86_400
     agent_tool_concurrency_limit: int = 4
 
+    rag_embedding_provider: str = "fake"
+    rag_embedding_model: str = "text-embedding-3-small"
+    rag_embedding_dimensions: int = 1536
+    rag_embedding_timeout_seconds: float = 30.0
+    rag_chunk_target_tokens: int = 400
+    rag_freshness_warning_days: int = 365
+    openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod
     def parse_authorized_parties(cls, value: object) -> list[str]:

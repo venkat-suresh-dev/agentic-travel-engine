@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F / 3G)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F / 3G / 4)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -11,7 +11,9 @@ extract_requirements
   ↓
 validate_requirements
   ├── incomplete → ask_user → END
-  └── complete → parallel independent tool fan-out
+  └── complete → retrieve_context (optional RAG; no-op without retriever)
+         ↓
+     parallel independent tool fan-out
          ├── fetch_weather
          ├── search_flights
          ├── search_hotels
@@ -30,7 +32,9 @@ validate_requirements
 
 ## Parallel orchestration (Phase 3G)
 
-After validation reports complete requirements, six independent travel-data tools fan out concurrently via LangGraph `Send` packets. Each tool writes only to its own typed state fields. A barrier node (`aggregate_independent_tools`) waits for all parallel branches before dependency-aware currency conversion runs.
+After validation reports complete requirements, an optional `retrieve_context` node may fetch curated destination reference data (Phase 4 RAG). When no `RAGRetriever` is injected, the node is a no-op and does not block tool fan-out.
+
+Six independent travel-data tools then fan out concurrently via LangGraph `Send` packets. Each tool writes only to its own typed state fields. A barrier node (`aggregate_independent_tools`) waits for all parallel branches before dependency-aware currency conversion runs.
 
 **Concurrency limit:** `AGENT_TOOL_CONCURRENCY_LIMIT` (default `4`) bounds simultaneous tool executions through a shared `ToolConcurrencyLimiter` semaphore. This protects external providers from unbounded bursts without replacing each tool's own timeout/retry/cache behavior.
 
