@@ -179,6 +179,92 @@ still failing?
 
 Search results represent information returned at retrieval time. The system does not guarantee room availability, pricing, or bookability.
 
+## Distance matrix tool
+
+- **Server name:** `agentic-travel-distance`
+- **Tool name:** `get_distance_matrix`
+
+### Provider selection
+
+**OpenRouteService Matrix API** was selected because:
+
+- Official first-party API built on OpenStreetMap data with a clear matrix contract
+- Supports driving and walking profiles with distance (meters) and duration (seconds)
+- Free-tier API key suitable for portfolio/POC use
+- Reuses Open-Meteo geocoding (already in the project) for location resolution
+- Provider abstraction allows replacement without changing LangGraph contracts
+
+> Note: Production deployments should monitor OpenRouteService rate limits and Terms of Service. The provider abstraction supports swapping to another matrix API.
+
+### Request
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `origins` | `LocationPoint[]` | Origin locations with `name`, `latitude`, `longitude` |
+| `destinations` | `LocationPoint[]` | Destination locations with coordinates |
+| `travel_mode` | enum | `driving` or `walking` |
+
+### Response
+
+Normalized `DistanceMatrixResult` with:
+
+- `routes[]` — per origin/destination pairs with `distance_meters` (int) and `duration_seconds` (int)
+- `travel_mode` — requested mode
+- `source` — `openrouteservice`
+- `retrieved_at` — UTC timestamp
+- `data_status` — `live`, `cached`, or `unavailable`
+
+### Authentication
+
+API key via `Authorization` header (`OPENROUTESERVICE_API_KEY`).
+
+**Matrix endpoint:** `POST /v2/matrix/{profile}` where profile is `driving-car` or `foot-walking`.
+
+**Location resolution:** Open-Meteo geocoding (`GeocodingLocationResolver`) converts city names to coordinates at the application layer.
+
+### Supported travel modes
+
+| Normalized mode | OpenRouteService profile |
+|-----------------|--------------------------|
+| `driving` | `driving-car` |
+| `walking` | `foot-walking` |
+
+### Provider architecture
+
+```text
+get_distance_matrix (MCP)
+    ↓
+DistanceService
+    ↓
+DistanceProvider → OpenRouteServiceDistanceProvider
+LocationResolver → GeocodingLocationResolver (application layer)
+```
+
+### Resilience
+
+```text
+request
+  ↓
+timeout (5s per HTTP call, configurable)
+  ↓
+retry once with 200ms backoff
+  ↓
+still failing?
+  ├── fresh in-process cache → cached result
+  └── no cache → unavailable (no invented distances)
+```
+
+### Cache
+
+- In-process TTL cache (default **10 minutes**, max **128** entries)
+- Key: `origins>>destinations>>travel_mode` (normalized coordinates included)
+- Route geometry is more stable than hotel/flight pricing; TTL is longer than hotels
+- Intended production upgrade: Redis-backed cache governed by provider Terms of Service
+
+### Graph integration limitation
+
+The current graph supplies only validated `departure_city` → `destination` as a 1×1 matrix. Attraction/hotel/stop matrices are deferred to itinerary phases.
+
 ## Tests
 
 ```bash

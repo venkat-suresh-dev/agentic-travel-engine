@@ -1,5 +1,16 @@
 """MCP tool servers for the AI Trip Planner."""
 
+from mcp_tools.distance.mcp_server import create_distance_mcp_server
+from mcp_tools.distance.schemas import (
+    DistanceDataStatus,
+    DistanceMatrixRequest,
+    DistanceMatrixResult,
+    DistanceRoute,
+    DistanceToolMetadata,
+    LocationPoint,
+    TravelMode,
+)
+from mcp_tools.distance.service import DistanceService
 from mcp_tools.flights.mcp_server import create_flights_mcp_server
 from mcp_tools.flights.schemas import (
     CabinClass,
@@ -33,6 +44,12 @@ from mcp_tools.weather.service import WeatherService
 __all__ = [
     "CabinClass",
     "DailyForecast",
+    "DistanceDataStatus",
+    "DistanceMatrixRequest",
+    "DistanceMatrixResult",
+    "DistanceRoute",
+    "DistanceService",
+    "DistanceToolMetadata",
     "FlightDataStatus",
     "FlightOffer",
     "FlightSearchRequest",
@@ -45,12 +62,15 @@ __all__ = [
     "HotelSearchResult",
     "HotelService",
     "HotelToolMetadata",
+    "LocationPoint",
     "MoneyAmount",
+    "TravelMode",
     "WeatherDataStatus",
     "WeatherForecastRequest",
     "WeatherForecastResult",
     "WeatherService",
     "WeatherToolMetadata",
+    "create_distance_mcp_server",
     "create_flights_mcp_server",
     "create_hotels_mcp_server",
     "create_weather_mcp_server",

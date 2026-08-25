@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from mcp_tools.distance.locations.base import LocationResolver
 from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.hotels.locations.base import CityCodeResolver
 from mcp_tools.weather.cache import WeatherCache
@@ -28,6 +29,8 @@ from app.llm.factory import build_llm_adapter
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
+from app.tools.distance import DistanceTool
+from app.tools.distance_factory import build_distance_service, build_location_resolver
 from app.tools.flights import FlightTool
 from app.tools.flights_factory import build_airport_resolver, build_flight_service
 from app.tools.hotels import HotelTool
@@ -118,6 +121,16 @@ def get_city_resolver() -> CityCodeResolver:
 
 
 @lru_cache
+def get_distance_tool() -> DistanceTool:
+    return DistanceTool(build_distance_service())
+
+
+@lru_cache
+def get_location_resolver() -> LocationResolver:
+    return build_location_resolver()
+
+
+@lru_cache
 def get_trip_planner_agent_service() -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=build_llm_adapter(),
@@ -126,6 +139,8 @@ def get_trip_planner_agent_service() -> TripPlannerAgentService:
         airport_resolver=get_airport_resolver(),
         hotel_tool=get_hotel_tool(),
         city_resolver=get_city_resolver(),
+        distance_tool=get_distance_tool(),
+        location_resolver=get_location_resolver(),
     )
 
 

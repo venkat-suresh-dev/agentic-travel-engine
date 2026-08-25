@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TypedDict
 
+from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
 from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
 from mcp_tools.weather.schemas import WeatherForecastResult, WeatherToolMetadata
@@ -39,6 +40,8 @@ class AgentState(TypedDict, total=False):
     flight_tool_metadata: dict[str, object] | None
     hotel_search: dict[str, object] | None
     hotel_tool_metadata: dict[str, object] | None
+    distance_matrix: dict[str, object] | None
+    distance_tool_metadata: dict[str, object] | None
     status: str
 
 
@@ -111,3 +114,17 @@ def hotel_metadata_from_state(state: AgentState) -> HotelToolMetadata | None:
     if raw is None:
         return None
     return HotelToolMetadata.model_validate(raw)
+
+
+def distance_matrix_from_state(state: AgentState) -> DistanceMatrixResult | None:
+    raw = state.get("distance_matrix")
+    if raw is None:
+        return None
+    return DistanceMatrixResult.model_validate(raw)
+
+
+def distance_metadata_from_state(state: AgentState) -> DistanceToolMetadata | None:
+    raw = state.get("distance_tool_metadata")
+    if raw is None:
+        return None
+    return DistanceToolMetadata.model_validate(raw)

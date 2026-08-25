@@ -13,11 +13,13 @@ from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 from pydantic import ValidationError
 
+from tests.fakes.distance_providers import FakeLocationResolver
 from tests.fakes.extract_stub import extract_from_text
 from tests.fakes.flights_providers import FakeAirportCodeResolver
 from tests.fakes.hotels_providers import FakeCityCodeResolver
@@ -42,6 +44,8 @@ def agent_service(
     fake_airport_resolver: FakeAirportCodeResolver,
     fake_hotel_tool: HotelTool,
     fake_city_resolver: FakeCityCodeResolver,
+    fake_distance_tool: DistanceTool,
+    fake_location_resolver: FakeLocationResolver,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -50,6 +54,8 @@ def agent_service(
         airport_resolver=fake_airport_resolver,
         hotel_tool=fake_hotel_tool,
         city_resolver=fake_city_resolver,
+        distance_tool=fake_distance_tool,
+        location_resolver=fake_location_resolver,
     )
 
 
@@ -287,6 +293,8 @@ def test_graph_is_integration_testable_end_to_end(
     fake_airport_resolver: FakeAirportCodeResolver,
     fake_hotel_tool: HotelTool,
     fake_city_resolver: FakeCityCodeResolver,
+    fake_distance_tool: DistanceTool,
+    fake_location_resolver: FakeLocationResolver,
 ) -> None:
     from langchain_core.runnables import RunnableConfig
 
@@ -297,6 +305,8 @@ def test_graph_is_integration_testable_end_to_end(
         airport_resolver=fake_airport_resolver,
         hotel_tool=fake_hotel_tool,
         city_resolver=fake_city_resolver,
+        distance_tool=fake_distance_tool,
+        location_resolver=fake_location_resolver,
     )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)

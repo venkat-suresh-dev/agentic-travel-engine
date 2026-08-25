@@ -9,6 +9,8 @@ from uuid import uuid4
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
+from mcp_tools.distance.locations.base import LocationResolver
+from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
 from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
 from mcp_tools.hotels.locations.base import CityCodeResolver
@@ -21,6 +23,8 @@ from app.agent.state import (
     AgentState,
     GraphStatus,
     clarification_from_state,
+    distance_matrix_from_state,
+    distance_metadata_from_state,
     flight_metadata_from_state,
     flight_search_from_state,
     hotel_metadata_from_state,
@@ -32,6 +36,7 @@ from app.agent.state import (
 )
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.llm.base import LLMAdapter
+from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
@@ -52,6 +57,8 @@ class TripPlannerRunResult:
     flight_tool_metadata: FlightToolMetadata | None
     hotel_search: HotelSearchResult | None
     hotel_tool_metadata: HotelToolMetadata | None
+    distance_matrix: DistanceMatrixResult | None
+    distance_tool_metadata: DistanceToolMetadata | None
     state: AgentState
 
 
@@ -68,6 +75,8 @@ class TripPlannerAgentService:
         airport_resolver: AirportCodeResolver | None = None,
         hotel_tool: HotelTool | None = None,
         city_resolver: CityCodeResolver | None = None,
+        distance_tool: DistanceTool | None = None,
+        location_resolver: LocationResolver | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
@@ -78,6 +87,8 @@ class TripPlannerAgentService:
             airport_resolver=airport_resolver,
             hotel_tool=hotel_tool,
             city_resolver=city_resolver,
+            distance_tool=distance_tool,
+            location_resolver=location_resolver,
         )
 
     def start(
@@ -131,5 +142,7 @@ class TripPlannerAgentService:
             flight_tool_metadata=flight_metadata_from_state(state),
             hotel_search=hotel_search_from_state(state),
             hotel_tool_metadata=hotel_metadata_from_state(state),
+            distance_matrix=distance_matrix_from_state(state),
+            distance_tool_metadata=distance_metadata_from_state(state),
             state=state,
         )

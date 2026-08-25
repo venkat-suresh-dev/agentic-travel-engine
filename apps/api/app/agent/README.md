@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → search_flights → search_hotels → END
+  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → END
   └── incomplete → ask_user → END
 ```
 
@@ -34,6 +34,8 @@ Important fields:
 | `flight_tool_metadata` | Tool-call provenance for flights |
 | `hotel_search` | Normalized hotel offers from the MCP hotel tool |
 | `hotel_tool_metadata` | Tool-call provenance for hotels |
+| `distance_matrix` | Normalized distance/duration facts from the MCP distance tool |
+| `distance_tool_metadata` | Tool-call provenance for distance |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -80,7 +82,17 @@ Structured domain models live in `app/domain/trip_request.py`.
 - Calls `HotelTool` → `HotelService` → Amadeus Hotel List + Hotel Search.
 - Stores normalized hotel offers and tool metadata in graph state.
 - Results are search snapshots only — not booking or availability guarantees.
-- Does **not** let the LLM invent hotel prices, ratings, or room availability.
+See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
+
+### `get_distance_matrix` (Phase 3D)
+
+- Invoked only after hotel search on the complete-request path.
+- Builds a deterministic `DistanceMatrixRequest` from validated `departure_city` and `destination`.
+- Resolves both locations to coordinates via `LocationResolver` (Open-Meteo geocoding).
+- Calls `DistanceTool` → `DistanceService` → OpenRouteService Matrix API.
+- Stores normalized route facts (`distance_meters`, `duration_seconds`) and tool metadata in graph state.
+- Currently supplies a 1×1 departure→destination matrix only; no invented stops or attractions.
+- Does **not** let the LLM invent travel times or distances.
 
 ### `ask_user`
 
@@ -176,9 +188,25 @@ Amadeus auth + Hotel List + Hotel Search
 
 See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
 
+## Distance tool boundary (Phase 3D)
+
+```text
+get_distance_matrix node
+    ↓
+DistanceTool (apps/api)
+    ↓
+DistanceService (packages/mcp-tools)
+    ↓
+MCP get_distance_matrix
+    ↓
+OpenRouteService Matrix API + Open-Meteo geocoding
+```
+
+See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and normalized units.
+
 ## Deferred to later phases
 
-- Additional MCP tools (restaurants, attractions, maps, currency conversion)
+- Additional MCP tools (restaurants, attractions, currency conversion)
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
 - Langfuse tracing

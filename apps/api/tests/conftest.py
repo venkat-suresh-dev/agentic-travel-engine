@@ -18,6 +18,7 @@ pytest_plugins = [
     "tests.fakes.weather",
     "tests.fakes.flights",
     "tests.fakes.hotels",
+    "tests.fakes.distance",
     "tests.fakes.llm_fixtures",
 ]
 

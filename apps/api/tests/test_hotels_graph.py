@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import GraphStatus
+from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
 from app.tools.weather import WeatherTool
 
+from tests.fakes.distance_providers import FakeLocationResolver
 from tests.fakes.flights_providers import FakeAirportCodeResolver
 from tests.fakes.hotels_providers import FakeCityCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
@@ -25,6 +27,8 @@ def test_complete_request_stores_hotels_in_graph_state(
     fake_airport_resolver: FakeAirportCodeResolver,
     fake_hotel_tool: HotelTool,
     fake_city_resolver: FakeCityCodeResolver,
+    fake_distance_tool: DistanceTool,
+    fake_location_resolver: FakeLocationResolver,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -33,6 +37,8 @@ def test_complete_request_stores_hotels_in_graph_state(
         airport_resolver=fake_airport_resolver,
         hotel_tool=fake_hotel_tool,
         city_resolver=fake_city_resolver,
+        distance_tool=fake_distance_tool,
+        location_resolver=fake_location_resolver,
     )
 
     result = service.start(COMPLETE_REQUEST, thread_id="hotels-complete")
@@ -54,6 +60,8 @@ def test_incomplete_request_does_not_fetch_hotels(
     fake_airport_resolver: FakeAirportCodeResolver,
     fake_hotel_tool: HotelTool,
     fake_city_resolver: FakeCityCodeResolver,
+    fake_distance_tool: DistanceTool,
+    fake_location_resolver: FakeLocationResolver,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -62,6 +70,8 @@ def test_incomplete_request_does_not_fetch_hotels(
         airport_resolver=fake_airport_resolver,
         hotel_tool=fake_hotel_tool,
         city_resolver=fake_city_resolver,
+        distance_tool=fake_distance_tool,
+        location_resolver=fake_location_resolver,
     )
 
     result = service.start(INCOMPLETE_REQUEST, thread_id="hotels-incomplete")

@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     flights_cache_ttl_seconds: int = 300
     hotels_request_timeout_seconds: float = 5.0
     hotels_cache_ttl_seconds: int = 120
+    openrouteservice_api_key: str = ""
+    openrouteservice_base_url: str = "https://api.openrouteservice.org"
+    distance_request_timeout_seconds: float = 5.0
+    distance_cache_ttl_seconds: int = 600
 
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod
