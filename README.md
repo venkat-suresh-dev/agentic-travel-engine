@@ -42,6 +42,19 @@ cd apps/api && uv sync && cd ../..
 
 `uv sync` creates a local `.venv` in `apps/api` and installs Python dependencies from `pyproject.toml`.
 
+### Database (Phase 1A)
+
+```bash
+# Start PostgreSQL 18
+docker compose -f infra/docker-compose.yml up -d
+
+# Configure and migrate (from apps/api)
+cp .env.example .env
+pnpm db:migrate
+```
+
+See `apps/api/README.md` for migration and database test details.
+
 ## Development
 
 Start all workspace dev servers via Turborepo:

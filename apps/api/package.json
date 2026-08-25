@@ -5,9 +5,14 @@
   "scripts": {
     "dev": "uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "build": "uv run python -c \"import app.main\"",
-    "lint": "uv run ruff check app tests && uv run ruff format --check app tests",
+    "lint": "uv run ruff check app tests alembic && uv run ruff format --check app tests alembic",
     "type-check": "uv run mypy app tests",
     "test": "uv run pytest",
-    "format": "uv run ruff format app tests"
+    "format": "uv run ruff format app tests alembic",
+    "db:up": "docker compose -f ../../infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f ../../infra/docker-compose.yml down",
+    "db:migrate": "uv run alembic upgrade head",
+    "db:downgrade": "uv run alembic downgrade -1",
+    "db:revision": "uv run alembic revision --autogenerate -m"
   }
 }
