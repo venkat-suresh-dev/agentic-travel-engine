@@ -37,9 +37,16 @@ class FakeAirportCodeResolver:
 
 
 class FakeFlightProvider:
-    def __init__(self, *, should_fail: bool = False, malformed: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        should_fail: bool = False,
+        malformed: bool = False,
+        price_currency: str | None = None,
+    ) -> None:
         self.should_fail = should_fail
         self.malformed = malformed
+        self.price_currency = price_currency
 
     def search_flights(self, request: FlightSearchRequest) -> list[FlightOffer]:
         if self.should_fail:
@@ -58,7 +65,7 @@ class FakeFlightProvider:
                 stops=0,
                 cabin_class=request.cabin_class,
                 price_amount=Decimal("45000"),
-                price_currency=request.currency,
+                price_currency=self.price_currency or request.currency,
                 itineraries=[
                     FlightItinerary(
                         duration="PT3H25M",

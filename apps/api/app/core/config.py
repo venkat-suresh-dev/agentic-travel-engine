@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     google_places_base_url: str = "https://places.googleapis.com"
     places_request_timeout_seconds: float = 5.0
     places_cache_ttl_seconds: int = 600
+    frankfurter_base_url: str = "https://api.frankfurter.dev"
+    currency_request_timeout_seconds: float = 5.0
+    currency_cache_ttl_seconds: int = 86_400
 
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod

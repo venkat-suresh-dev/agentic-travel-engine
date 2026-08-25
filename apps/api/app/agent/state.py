@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TypedDict
 
+from mcp_tools.currency.schemas import CurrencyConversionResult, CurrencyToolMetadata
 from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
 from mcp_tools.flights.schemas import FlightSearchResult, FlightToolMetadata
 from mcp_tools.hotels.schemas import HotelSearchResult, HotelToolMetadata
@@ -51,6 +52,8 @@ class AgentState(TypedDict, total=False):
     restaurant_tool_metadata: dict[str, object] | None
     attraction_search: dict[str, object] | None
     attraction_tool_metadata: dict[str, object] | None
+    currency_conversion: dict[str, object] | None
+    currency_tool_metadata: dict[str, object] | None
     status: str
 
 
@@ -165,3 +168,19 @@ def attraction_metadata_from_state(state: AgentState) -> PlacesToolMetadata | No
     if raw is None:
         return None
     return PlacesToolMetadata.model_validate(raw)
+
+
+def currency_conversion_from_state(
+    state: AgentState,
+) -> CurrencyConversionResult | None:
+    raw = state.get("currency_conversion")
+    if raw is None:
+        return None
+    return CurrencyConversionResult.model_validate(raw)
+
+
+def currency_metadata_from_state(state: AgentState) -> CurrencyToolMetadata | None:
+    raw = state.get("currency_tool_metadata")
+    if raw is None:
+        return None
+    return CurrencyToolMetadata.model_validate(raw)

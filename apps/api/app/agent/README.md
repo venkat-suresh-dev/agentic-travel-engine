@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E)
+# Trip Planner Agent (Phase 2A / 3A / 3B / 3C / 3D / 3E / 3F)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → search_restaurants → search_attractions → END
+  ├── complete → fetch_weather → search_flights → search_hotels → get_distance_matrix → search_restaurants → search_attractions → convert_currency → END
   └── incomplete → ask_user → END
 ```
 
@@ -40,6 +40,8 @@ Important fields:
 | `restaurant_tool_metadata` | Tool-call provenance for restaurants |
 | `attraction_search` | Normalized attraction results from the MCP places tool |
 | `attraction_tool_metadata` | Tool-call provenance for attractions |
+| `currency_conversion` | Normalized reference-rate conversion from the MCP currency tool |
+| `currency_tool_metadata` | Tool-call provenance for currency conversion |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -115,6 +117,15 @@ See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-bookin
 - Calls `AttractionTool` → `PlacesService` → Google Places Nearby Search (New).
 - Stores normalized attraction facts and tool metadata in graph state.
 - Does **not** let the LLM invent venues, ratings, or hours.
+
+### `convert_currency` (Phase 3F)
+
+- Invoked only after attraction search on the complete-request path.
+- Builds a deterministic conversion plan from the lowest-priced flight offer and `trip_request.budget_currency`.
+- Calls `CurrencyTool` → `CurrencyService` → Frankfurter v2 reference rates via the MCP tool package.
+- Stores converted representation and tool metadata separately; original flight offer prices remain unchanged.
+- Skips provider access for same-currency conversion (`rate = 1`, `source = deterministic`).
+- Does **not** let the LLM invent exchange rates or perform authoritative accounting.
 
 ### `ask_user`
 

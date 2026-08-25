@@ -9,6 +9,7 @@ from uuid import uuid4
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
+from mcp_tools.currency.schemas import CurrencyConversionResult, CurrencyToolMetadata
 from mcp_tools.distance.locations.base import LocationResolver
 from mcp_tools.distance.schemas import DistanceMatrixResult, DistanceToolMetadata
 from mcp_tools.flights.airports.base import AirportCodeResolver
@@ -30,6 +31,8 @@ from app.agent.state import (
     attraction_metadata_from_state,
     attraction_search_from_state,
     clarification_from_state,
+    currency_conversion_from_state,
+    currency_metadata_from_state,
     distance_matrix_from_state,
     distance_metadata_from_state,
     flight_metadata_from_state,
@@ -46,6 +49,7 @@ from app.agent.state import (
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.llm.base import LLMAdapter
 from app.tools.attractions import AttractionTool
+from app.tools.currency import CurrencyTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
@@ -74,6 +78,8 @@ class TripPlannerRunResult:
     restaurant_tool_metadata: PlacesToolMetadata | None
     attraction_search: AttractionSearchResult | None
     attraction_tool_metadata: PlacesToolMetadata | None
+    currency_conversion: CurrencyConversionResult | None
+    currency_tool_metadata: CurrencyToolMetadata | None
     state: AgentState
 
 
@@ -94,6 +100,7 @@ class TripPlannerAgentService:
         location_resolver: LocationResolver | None = None,
         restaurant_tool: RestaurantTool | None = None,
         attraction_tool: AttractionTool | None = None,
+        currency_tool: CurrencyTool | None = None,
     ) -> None:
         self._checkpointer = checkpointer or InMemorySaver()
         self._graph = graph or compile_trip_planner_graph(
@@ -108,6 +115,7 @@ class TripPlannerAgentService:
             location_resolver=location_resolver,
             restaurant_tool=restaurant_tool,
             attraction_tool=attraction_tool,
+            currency_tool=currency_tool,
         )
 
     def start(
@@ -167,5 +175,7 @@ class TripPlannerAgentService:
             restaurant_tool_metadata=restaurant_metadata_from_state(state),
             attraction_search=attraction_search_from_state(state),
             attraction_tool_metadata=attraction_metadata_from_state(state),
+            currency_conversion=currency_conversion_from_state(state),
+            currency_tool_metadata=currency_metadata_from_state(state),
             state=state,
         )

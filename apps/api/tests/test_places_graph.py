@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import GraphStatus
 from app.tools.attractions import AttractionTool
+from app.tools.currency import CurrencyTool
 from app.tools.distance import DistanceTool
 from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
@@ -33,6 +34,7 @@ def test_complete_request_stores_restaurant_and_attraction_results(
     fake_location_resolver: FakeLocationResolver,
     fake_restaurant_tool: RestaurantTool,
     fake_attraction_tool: AttractionTool,
+    fake_currency_tool: CurrencyTool,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -45,6 +47,7 @@ def test_complete_request_stores_restaurant_and_attraction_results(
         location_resolver=fake_location_resolver,
         restaurant_tool=fake_restaurant_tool,
         attraction_tool=fake_attraction_tool,
+        currency_tool=fake_currency_tool,
     )
 
     result = service.start(COMPLETE_REQUEST, thread_id="places-complete")
@@ -77,6 +80,7 @@ def test_incomplete_request_does_not_search_places(
     fake_location_resolver: FakeLocationResolver,
     fake_restaurant_tool: RestaurantTool,
     fake_attraction_tool: AttractionTool,
+    fake_currency_tool: CurrencyTool,
 ) -> None:
     service = TripPlannerAgentService(
         llm_adapter=fake_adapter,
@@ -89,6 +93,7 @@ def test_incomplete_request_does_not_search_places(
         location_resolver=fake_location_resolver,
         restaurant_tool=fake_restaurant_tool,
         attraction_tool=fake_attraction_tool,
+        currency_tool=fake_currency_tool,
     )
 
     result = service.start(INCOMPLETE_REQUEST, thread_id="places-incomplete")

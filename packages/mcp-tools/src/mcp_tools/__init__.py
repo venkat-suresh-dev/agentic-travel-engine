@@ -1,5 +1,14 @@
 """MCP tool servers for the AI Trip Planner."""
 
+from mcp_tools.currency.mcp_server import create_currency_mcp_server
+from mcp_tools.currency.schemas import (
+    CurrencyConversionRequest,
+    CurrencyConversionResult,
+    CurrencyDataStatus,
+    CurrencyToolMetadata,
+    RateKind,
+)
+from mcp_tools.currency.service import CurrencyService
 from mcp_tools.distance.mcp_server import create_distance_mcp_server
 from mcp_tools.distance.schemas import (
     DistanceDataStatus,
@@ -59,6 +68,11 @@ from mcp_tools.weather.service import WeatherService
 
 __all__ = [
     "CabinClass",
+    "CurrencyConversionRequest",
+    "CurrencyConversionResult",
+    "CurrencyDataStatus",
+    "CurrencyService",
+    "CurrencyToolMetadata",
     "DailyForecast",
     "DistanceDataStatus",
     "DistanceMatrixRequest",
@@ -83,6 +97,7 @@ __all__ = [
     "PlacesDataStatus",
     "PlacesService",
     "PlacesToolMetadata",
+    "RateKind",
     "RestaurantCuisine",
     "RestaurantPlace",
     "RestaurantPriceLevel",
@@ -99,6 +114,7 @@ __all__ = [
     "WeatherForecastResult",
     "WeatherService",
     "WeatherToolMetadata",
+    "create_currency_mcp_server",
     "create_distance_mcp_server",
     "create_flights_mcp_server",
     "create_hotels_mcp_server",

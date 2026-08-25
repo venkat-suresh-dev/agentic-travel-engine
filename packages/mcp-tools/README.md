@@ -325,6 +325,71 @@ Same pattern as other MCP tools: 5s timeout, one retry with 200ms backoff, 10-mi
 
 The current graph searches restaurants and attractions near the validated destination only. No invented neighborhoods, hotel locations, or itinerary stops.
 
+## Currency tool
+
+- **Server name:** `agentic-travel-currency`
+- **Tool name:** `convert_currency`
+
+### Provider selection
+
+**Frankfurter v2** was selected because:
+
+- Public API with no API key requirement
+- Daily ECB/reference exchange rates suitable for trip planning estimates
+- Single-pair endpoint: `GET /v2/rate/{base}/{quote}`
+- Optional historical rates via `?date=YYYY-MM-DD`
+- Provider abstraction allows replacement without changing application contracts
+
+> **Important:** Frankfurter/ECB data are **reference/planning rates**, not payment authorization or settlement rates. The application must never claim these are exact bank or card rates.
+
+### Authentication
+
+None required. Base URL defaults to `https://api.frankfurter.dev`.
+
+### Conversion request
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `base_currency` | str | ISO 4217 source currency (normalized uppercase) |
+| `quote_currency` | str | ISO 4217 target currency (normalized uppercase) |
+| `amount` | Decimal | Positive amount to convert |
+| `rate_date` | date? | Optional historical reference date |
+
+### Normalized result
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rate` | Decimal | Reference exchange rate |
+| `input_amount` | Decimal | Original amount |
+| `converted_amount` | Decimal | Rounded converted amount |
+| `rate_date` | date | Provider reference-rate publication date |
+| `retrieved_at` | datetime | When the application fetched the rate |
+| `source` | str | `frankfurter` or `deterministic` (same-currency) |
+| `data_status` | enum | `live`, `cached`, or `unavailable` |
+| `rate_kind` | enum | `reference` (planning rate) |
+
+### Exact money semantics
+
+- All rate and amount arithmetic uses Python `Decimal` (no binary floats).
+- Converted amounts are quantized to **2 decimal places** with **ROUND_HALF_UP**.
+- Same-currency conversion (`base == quote`) skips the provider, returns `rate = 1`, `source = deterministic`.
+
+### Resilience
+
+- 5s timeout (configurable via `CURRENCY_REQUEST_TIMEOUT_SECONDS`)
+- One retry with 200ms backoff
+- 24-hour in-process cache (max 128 entries), aligned with daily reference-rate publication (`CURRENCY_CACHE_TTL_SECONDS=86400`)
+- Cache key: `base|quote|amount|rate_date_or_latest`
+- Provider failure with fresh cache → `data_status = cached`
+- Provider failure without cache → `data_status = unavailable` (no invented fallback rates)
+
+### Limitations
+
+- Reference rates only; not suitable for payment settlement claims
+- Daily publication cadence (not intraday market rates)
+- Currency coverage follows Frankfurter/ECB supported currencies
+- No permanent exchange-rate history storage in this slice
+
 ## Tests
 
 ```bash

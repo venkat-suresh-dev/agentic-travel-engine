@@ -13,6 +13,7 @@ from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.hotels.locations.base import CityCodeResolver
 
 from app.agent.nodes.ask_user import ask_user
+from app.agent.nodes.convert_currency import build_convert_currency_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
@@ -26,6 +27,8 @@ from app.agent.state import AgentInput, AgentState
 from app.llm.base import LLMAdapter
 from app.llm.factory import build_llm_adapter
 from app.tools.attractions import AttractionTool
+from app.tools.currency import CurrencyTool
+from app.tools.currency_factory import build_currency_tool
 from app.tools.distance import DistanceTool
 from app.tools.distance_factory import build_distance_tool, build_location_resolver
 from app.tools.flights import FlightTool
@@ -50,6 +53,7 @@ def build_trip_planner_graph(
     location_resolver: LocationResolver | None = None,
     restaurant_tool: RestaurantTool | None = None,
     attraction_tool: AttractionTool | None = None,
+    currency_tool: CurrencyTool | None = None,
 ) -> StateGraph[AgentState, None, AgentInput, AgentState]:
     """Construct extract → validate → ask_user/weather/flights/hotels/places graph."""
     adapter = llm_adapter or build_llm_adapter()
@@ -62,6 +66,7 @@ def build_trip_planner_graph(
     locations = location_resolver or build_location_resolver()
     restaurants = restaurant_tool or build_restaurant_tool()
     attractions = attraction_tool or build_attraction_tool()
+    currency = currency_tool or build_currency_tool()
 
     builder: StateGraph[AgentState, None, AgentInput, AgentState] = StateGraph(
         AgentState,
@@ -97,6 +102,10 @@ def build_trip_planner_graph(
         "search_attractions",
         cast(Any, build_search_attractions_node(attractions, locations)),
     )
+    builder.add_node(
+        "convert_currency",
+        cast(Any, build_convert_currency_node(currency)),
+    )
 
     builder.add_edge(START, "extract_requirements")
     builder.add_edge("extract_requirements", "validate_requirements")
@@ -114,7 +123,8 @@ def build_trip_planner_graph(
     builder.add_edge("search_hotels", "get_distance_matrix")
     builder.add_edge("get_distance_matrix", "search_restaurants")
     builder.add_edge("search_restaurants", "search_attractions")
-    builder.add_edge("search_attractions", END)
+    builder.add_edge("search_attractions", "convert_currency")
+    builder.add_edge("convert_currency", END)
     return builder
 
 
@@ -130,6 +140,7 @@ def compile_trip_planner_graph(
     location_resolver: LocationResolver | None = None,
     restaurant_tool: RestaurantTool | None = None,
     attraction_tool: AttractionTool | None = None,
+    currency_tool: CurrencyTool | None = None,
 ) -> CompiledTripPlannerGraph:
     """Compile the trip planner graph with an optional checkpoint backend."""
     saver = checkpointer or InMemorySaver()
@@ -144,6 +155,7 @@ def compile_trip_planner_graph(
         location_resolver=location_resolver,
         restaurant_tool=restaurant_tool,
         attraction_tool=attraction_tool,
+        currency_tool=currency_tool,
     ).compile(
         checkpointer=saver,
     )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from mcp_tools.distance.schemas import LocationPoint
 from mcp_tools.weather.geocoding.base import GeocodedLocation
 from mcp_tools.weather.schemas import DailyForecast, WeatherForecastRequest
@@ -383,3 +385,58 @@ class FakePlacesProvider:
                 user_rating_count=500,
             )
         ]
+
+
+class FakeCurrencyRateProvider:
+    def __init__(
+        self,
+        *,
+        should_fail: bool = False,
+        malformed: bool = False,
+        rates: dict[tuple[str, str], Decimal] | None = None,
+        fixture_payload: object | None = None,
+    ) -> None:
+        self.should_fail = should_fail
+        self.malformed = malformed
+        self.rates = rates or {("USD", "INR"): Decimal("83.12")}
+        self.fixture_payload = fixture_payload
+
+    def get_exchange_rate(
+        self,
+        *,
+        base_currency: str,
+        quote_currency: str,
+        rate_date=None,
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from mcp_tools.currency.exceptions import (
+            CurrencyMalformedResponseError,
+            CurrencyProviderError,
+        )
+        from mcp_tools.currency.providers.base import ProviderExchangeRate
+        from mcp_tools.currency.providers.normalize import parse_frankfurter_rate
+
+        if self.should_fail:
+            raise CurrencyProviderError("simulated provider failure")
+        if self.malformed:
+            raise CurrencyMalformedResponseError("simulated malformed response")
+        if self.fixture_payload is not None:
+            return parse_frankfurter_rate(
+                self.fixture_payload,
+                base_currency=base_currency,
+                quote_currency=quote_currency,
+            )
+
+        base = base_currency.upper()
+        quote = quote_currency.upper()
+        rate = self.rates.get((base, quote))
+        if rate is None:
+            raise CurrencyProviderError(f"simulated missing rate for {base}/{quote}")
+        return ProviderExchangeRate(
+            base_currency=base,
+            quote_currency=quote,
+            rate=Decimal(str(rate)),
+            rate_date=rate_date or date(2026, 3, 25),
+        )
