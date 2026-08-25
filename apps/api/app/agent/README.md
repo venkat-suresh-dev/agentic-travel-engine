@@ -78,9 +78,23 @@ The graph is compiled with LangGraph's `InMemorySaver` checkpointer for thread-s
 
 Production persistence should move to a durable checkpointer (for example Postgres) in a later phase. Redis is intentionally not introduced here.
 
+## API exposure (Phase 2C)
+
+Authenticated HTTP endpoints in `app/api/routes/agent.py` expose the ask_user/resume lifecycle:
+
+- `POST /api/agent/runs` — start a planning run
+- `POST /api/agent/runs/{run_id}/messages` — submit clarification and resume
+
+`AgentRunService` in `app/services/agent_runs.py` maps graph results to API-safe responses and enforces per-user run ownership through an in-memory `AgentRunRegistry`. Run IDs correspond to LangGraph `thread_id` values.
+
+Current limitations:
+
+- Run ownership and graph checkpoints are stored in process memory only.
+- Restarting the API process clears all in-flight runs.
+- Durable conversation persistence belongs to a later phase.
+
 ## Deferred to later phases
 
-- API exposure of ask_user/resume flow (Phase 2C)
 - MCP tools and external travel APIs
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints

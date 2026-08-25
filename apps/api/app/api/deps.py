@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.service import TripPlannerAgentService
 from app.auth.clerk import AuthVerifier, build_auth_verifier
 from app.auth.exceptions import (
     AuthenticationError,
@@ -17,6 +18,8 @@ from app.core.config import settings
 from app.core.current_user import CurrentUser
 from app.db.models.trip import Trip
 from app.db.session import get_db
+from app.llm.factory import build_llm_adapter
+from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
 
@@ -61,3 +64,23 @@ async def get_owned_trip(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
+
+
+@lru_cache
+def get_agent_run_registry() -> AgentRunRegistry:
+    return AgentRunRegistry()
+
+
+@lru_cache
+def get_trip_planner_agent_service() -> TripPlannerAgentService:
+    return TripPlannerAgentService(llm_adapter=build_llm_adapter())
+
+
+def get_agent_run_service(
+    registry: Annotated[AgentRunRegistry, Depends(get_agent_run_registry)],
+    agent_service: Annotated[
+        TripPlannerAgentService,
+        Depends(get_trip_planner_agent_service),
+    ],
+) -> AgentRunService:
+    return AgentRunService(agent_service, registry)

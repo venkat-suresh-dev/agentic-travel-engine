@@ -160,3 +160,50 @@ It is explicitly prohibited from:
 - deciding whether requirements are complete
 
 Deterministic validation in `validate_requirements` remains the source of truth for completeness.
+
+## Agent planning API (Phase 2C)
+
+Authenticated endpoints expose the ask_user/resume lifecycle without streaming.
+
+### Start a run
+
+```http
+POST /api/agent/runs
+Authorization: Bearer <clerk-session-token>
+Content-Type: application/json
+
+{
+  "message": "Plan a 5-day trip to Dubai for 2 people."
+}
+```
+
+Returns `201 Created` with a structured response:
+
+| `status` | Meaning |
+|----------|---------|
+| `complete` | All required fields are present |
+| `needs_clarification` | Missing fields are listed in `missing_fields` |
+| `failed` | Extraction failed; see `error` |
+
+When clarification is required, `clarification` includes machine-readable prompts. The API does not invent missing budget, dates, or departure city values.
+
+### Submit clarification
+
+```http
+POST /api/agent/runs/{run_id}/messages
+Authorization: Bearer <clerk-session-token>
+Content-Type: application/json
+
+{
+  "message": "Budget is ₹1,50,000 and we're departing from Mumbai."
+}
+```
+
+Resumes the same graph checkpoint, merges new information into the existing `trip_request`, and re-runs validation. Multiple clarification turns are supported until requirements are complete.
+
+### Ownership and persistence
+
+- Each run is associated with the authenticated application user at creation time.
+- Another user cannot resume the same `run_id` (`403 Forbidden`).
+- Unknown `run_id` values return `404 Not Found`.
+- Run ownership and graph checkpoints are stored in process memory only. Restarting the API clears in-flight runs.

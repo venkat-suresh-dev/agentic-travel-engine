@@ -32,6 +32,7 @@ _PREFERENCE_PATTERN = re.compile(
     r"\b(?:prefer|preferences?:)\s*([^.]+)",
     re.IGNORECASE,
 )
+_RELAXED_PACE_PATTERN = re.compile(r"\brelaxed\s+pace\b", re.IGNORECASE)
 _DATE_RANGE_PATTERN = re.compile(
     r"\bfrom\s+([A-Za-z]+\s+\d{1,2})\s+to\s+([A-Za-z]+\s+\d{1,2})\b",
     re.IGNORECASE,
@@ -82,5 +83,10 @@ def extract_from_text(text: str, existing: TripRequest | None = None) -> TripReq
     preferences = _parse_preferences(text)
     if preferences:
         request.preferences = preferences
+
+    if _RELAXED_PACE_PATTERN.search(text):
+        preference = "relaxed pace"
+        if preference not in request.preferences:
+            request.preferences.append(preference)
 
     return request
