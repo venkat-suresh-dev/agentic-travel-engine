@@ -8,9 +8,11 @@ from typing import TypeVar, cast
 from app.domain.trip_request import TripRequest
 from app.llm.exceptions import LLMProviderError, LLMStructuredOutputError
 from app.llm.types import LLMCallMetadata, StructuredLLMResult
+from app.modification.schemas import TripModificationRequest
 from pydantic import BaseModel, ValidationError
 
 from tests.fakes.extract_stub import extract_from_text
+from tests.fakes.modification_stub import extract_modification_from_text
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -80,6 +82,14 @@ class FakeLLMAdapter:
         user_prompt: str,
         response_model: type[T],
     ) -> T:
+        if response_model is TripModificationRequest:
+            if "User modification request:" in user_prompt:
+                user_text = user_prompt.split("User modification request:", 1)[
+                    1
+                ].strip()
+                return extract_modification_from_text(user_text)  # type: ignore[return-value]
+            return extract_modification_from_text(user_prompt)  # type: ignore[return-value]
+
         if response_model is not TripRequest:
             msg = f"Fake adapter does not support {response_model.__name__}"
             raise LLMStructuredOutputError(msg)

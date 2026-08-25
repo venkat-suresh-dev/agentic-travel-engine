@@ -31,6 +31,11 @@ if TYPE_CHECKING:
         ItinerarySelectionCandidate,
         ItineraryValidationResult,
     )
+    from app.modification.schemas import (
+        ModificationScope,
+        RefreshPlan,
+        TripModificationRequest,
+    )
 
 
 def _merge_tool_orchestration(
@@ -92,6 +97,12 @@ class AgentState(TypedDict, total=False):
     critic_issues: list[dict[str, object]] | None
     planning_failed: bool | None
     planning_failure: dict[str, object] | None
+    modification_request: dict[str, object] | None
+    modification_scope: dict[str, object] | None
+    refresh_plan: dict[str, object] | None
+    modification_status: str | None
+    modification_failure: dict[str, object] | None
+    previous_itinerary: dict[str, object] | None
     status: str
 
 
@@ -318,3 +329,32 @@ def critic_issues_from_state(state: AgentState) -> list[CriticIssue]:
     if raw is None:
         return []
     return [CriticIssue.model_validate(item) for item in raw]
+
+
+def modification_request_from_state(
+    state: AgentState,
+) -> TripModificationRequest | None:
+    from app.modification.schemas import TripModificationRequest
+
+    raw = state.get("modification_request")
+    if raw is None:
+        return None
+    return TripModificationRequest.model_validate(raw)
+
+
+def modification_scope_from_state(state: AgentState) -> ModificationScope | None:
+    from app.modification.schemas import ModificationScope
+
+    raw = state.get("modification_scope")
+    if raw is None:
+        return None
+    return ModificationScope.model_validate(raw)
+
+
+def refresh_plan_from_state(state: AgentState) -> RefreshPlan | None:
+    from app.modification.schemas import RefreshPlan
+
+    raw = state.get("refresh_plan")
+    if raw is None:
+        return None
+    return RefreshPlan.model_validate(raw)

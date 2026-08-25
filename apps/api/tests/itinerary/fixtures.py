@@ -10,7 +10,11 @@ from app.budget.schemas import BudgetResult
 from app.domain.trip_request import TripRequest
 from app.itinerary.assumptions import SchedulingAssumptions
 from app.itinerary.context import ItineraryBuildContext
-from app.itinerary.schemas import CandidateDayPlan, ItinerarySelectionCandidate
+from app.itinerary.schemas import (
+    CandidateDayPlan,
+    Itinerary,
+    ItinerarySelectionCandidate,
+)
 from mcp_tools.distance.schemas import (
     DistanceDataStatus,
     DistanceMatrixResult,
@@ -303,6 +307,22 @@ def example_candidate(*, duration_days: int = 5) -> ItinerarySelectionCandidate:
             )
         )
     return ItinerarySelectionCandidate(days=days)
+
+
+def example_valid_itinerary(*, duration_days: int = 5) -> Itinerary:
+    from app.itinerary.builder import ItineraryBuilder
+    from app.itinerary.composer.fake import FakeItineraryComposer
+
+    builder = ItineraryBuilder(
+        composer=FakeItineraryComposer(assumptions=fast_assumptions()),
+        assumptions=fast_assumptions(),
+    )
+    result = builder.build_from_context(
+        example_itinerary_context(duration_days=duration_days)
+    )
+    assert result.success is True
+    assert result.itinerary is not None
+    return result.itinerary
 
 
 def fast_assumptions() -> SchedulingAssumptions:

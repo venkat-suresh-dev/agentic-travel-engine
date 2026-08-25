@@ -15,16 +15,27 @@ from mcp_tools.hotels.locations.base import CityCodeResolver
 from app.agent.nodes.aggregate_independent_tools import (
     build_aggregate_independent_tools_node,
 )
+from app.agent.nodes.apply_modification import build_apply_modification_node
 from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.build_itinerary import build_build_itinerary_node
 from app.agent.nodes.compute_budget import build_compute_budget_node
 from app.agent.nodes.convert_currency import build_convert_currency_node
 from app.agent.nodes.critic_validate import build_critic_validate_node
+from app.agent.nodes.extract_modification import build_extract_modification_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
 from app.agent.nodes.finalize_failure import build_finalize_failure_node
+from app.agent.nodes.finalize_modification_failure import (
+    build_finalize_modification_failure_node,
+)
 from app.agent.nodes.finalize_run import build_finalize_run_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
+from app.agent.nodes.recompute_modification_budget import (
+    build_recompute_modification_budget_node,
+)
+from app.agent.nodes.resolve_modification_scope import (
+    build_resolve_modification_scope_node,
+)
 from app.agent.nodes.retrieve_context import build_retrieve_context_node
 from app.agent.nodes.search_attractions import build_search_attractions_node
 from app.agent.nodes.search_flights import build_search_flights_node
@@ -34,9 +45,14 @@ from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
 from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
 from app.agent.routing import (
+    route_after_aggregate,
+    route_after_apply_modification,
+    route_after_convert_currency,
     route_after_critic,
+    route_after_modification_scope,
     route_after_retrieve_context,
     route_after_validation,
+    route_entry,
 )
 from app.agent.state import AgentInput, AgentState
 from app.core.config import Settings, settings
@@ -104,6 +120,22 @@ def build_trip_planner_graph(
         "extract_requirements",
         cast(Any, build_extract_requirements_node(adapter)),
     )
+    builder.add_node(
+        "extract_modification",
+        cast(Any, build_extract_modification_node(adapter)),
+    )
+    builder.add_node(
+        "resolve_modification_scope",
+        cast(Any, build_resolve_modification_scope_node()),
+    )
+    builder.add_node(
+        "apply_modification",
+        cast(Any, build_apply_modification_node()),
+    )
+    builder.add_node(
+        "recompute_modification_budget",
+        cast(Any, build_recompute_modification_budget_node()),
+    )
     builder.add_node("validate_requirements", validate_requirements)
     builder.add_node(
         "retrieve_context",
@@ -150,9 +182,32 @@ def build_trip_planner_graph(
     builder.add_node("critic_validate", cast(Any, build_critic_validate_node()))
     builder.add_node("finalize_run", cast(Any, build_finalize_run_node()))
     builder.add_node("finalize_failure", cast(Any, build_finalize_failure_node()))
+    builder.add_node(
+        "finalize_modification_failure",
+        cast(Any, build_finalize_modification_failure_node()),
+    )
 
-    builder.add_edge(START, "extract_requirements")
+    builder.add_conditional_edges(
+        START,
+        route_entry,
+        ["extract_requirements", "extract_modification"],
+    )
     builder.add_edge("extract_requirements", "validate_requirements")
+    builder.add_edge("extract_modification", "resolve_modification_scope")
+    builder.add_conditional_edges(
+        "resolve_modification_scope",
+        route_after_modification_scope,
+        [
+            "apply_modification",
+            "fetch_weather",
+            "search_flights",
+            "search_hotels",
+            "get_distance_matrix",
+            "search_restaurants",
+            "search_attractions",
+            "retrieve_context",
+        ],
+    )
     builder.add_conditional_edges(
         "validate_requirements",
         route_after_validation,
@@ -161,24 +216,45 @@ def build_trip_planner_graph(
     builder.add_conditional_edges(
         "retrieve_context",
         route_after_retrieve_context,
-        list(INDEPENDENT_TOOL_NODE_NAMES),
+        [*INDEPENDENT_TOOL_NODE_NAMES, "apply_modification"],
     )
     builder.add_edge("ask_user", END)
 
     for node_name in INDEPENDENT_TOOL_NODE_NAMES:
         builder.add_edge(node_name, "aggregate_independent_tools")
 
-    builder.add_edge("aggregate_independent_tools", "convert_currency")
-    builder.add_edge("convert_currency", "compute_budget")
+    builder.add_conditional_edges(
+        "aggregate_independent_tools",
+        route_after_aggregate,
+        ["convert_currency", "apply_modification"],
+    )
+    builder.add_conditional_edges(
+        "convert_currency",
+        route_after_convert_currency,
+        ["compute_budget", "apply_modification"],
+    )
+    builder.add_conditional_edges(
+        "apply_modification",
+        route_after_apply_modification,
+        ["recompute_modification_budget", "critic_validate"],
+    )
+    builder.add_edge("recompute_modification_budget", "critic_validate")
     builder.add_edge("compute_budget", "build_itinerary")
     builder.add_edge("build_itinerary", "critic_validate")
     builder.add_conditional_edges(
         "critic_validate",
         route_after_critic,
-        ["finalize_run", "build_itinerary", "finalize_failure"],
+        [
+            "finalize_run",
+            "build_itinerary",
+            "apply_modification",
+            "finalize_failure",
+            "finalize_modification_failure",
+        ],
     )
     builder.add_edge("finalize_run", END)
     builder.add_edge("finalize_failure", END)
+    builder.add_edge("finalize_modification_failure", END)
     return builder
 
 

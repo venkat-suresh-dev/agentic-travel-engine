@@ -19,8 +19,9 @@ def test_validation_routes_to_retrieve_context_for_complete_requests() -> None:
 
 
 def test_retrieve_context_routes_to_parallel_tool_fan_out() -> None:
-    sends = route_after_retrieve_context({})
-    node_names = {send.node for send in sends}
+    result = route_after_retrieve_context({})
+    assert isinstance(result, list)
+    node_names = {send.node for send in result}
     assert "fetch_weather" in node_names
     assert "search_flights" in node_names
     assert len(node_names) == 6
