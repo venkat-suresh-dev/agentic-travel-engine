@@ -1,15 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/planner(.*)"]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (process.env.PLAYWRIGHT === "1") {
-    return;
-  }
-  if (isProtectedRoute(request)) {
-    await auth.protect();
-  }
-});
+/**
+ * Clerk session handling only. Planner route protection runs in the server
+ * layout so client-side RSC navigation receives a proper redirect response.
+ */
+export default clerkMiddleware();
 
 export const config = {
   matcher: [

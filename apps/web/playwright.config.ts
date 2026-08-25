@@ -11,8 +11,20 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "auth",
+      testMatch: /auth-layout\.spec\.ts/,
+      workers: 1,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium",
+      testIgnore: /auth-layout\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        extraHTTPHeaders: {
+          "x-playwright-bypass-auth": "1",
+        },
+      },
     },
   ],
   webServer: {

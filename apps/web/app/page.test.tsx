@@ -10,5 +10,9 @@ describe("Home page", () => {
     expect(
       screen.getByRole("link", { name: /open planner/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open planner/i })).toHaveAttribute(
+      "href",
+      "/planner",
+    );
   });
 });

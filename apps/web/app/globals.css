@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #f4efe6;
   --foreground: #17130f;
   --foreground-secondary: #5f574f;
@@ -119,4 +120,70 @@ body {
 
 .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
   background-color: rgba(95, 87, 79, 0.3);
+}
+
+.auth-page {
+  width: 100%;
+  color-scheme: light;
+}
+
+.auth-clerk-slot {
+  width: 100%;
+  max-width: 440px;
+  color-scheme: light;
+}
+
+.auth-clerk-slot .cl-rootBox,
+.auth-clerk-slot .cl-cardBox {
+  width: 100% !important;
+  max-width: 440px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin-inline: auto;
+  background: transparent !important;
+}
+
+.auth-clerk-slot .cl-card {
+  width: 100% !important;
+  max-width: 440px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  background-color: var(--surface-elevated) !important;
+  color: var(--foreground) !important;
+}
+
+.auth-clerk-slot .cl-scrollBox,
+.auth-clerk-slot .cl-page {
+  min-height: 0 !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+.auth-clerk-slot .cl-formButtonPrimary {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  box-shadow: none !important;
+}
+
+.auth-clerk-slot .cl-formButtonPrimary:hover,
+.auth-clerk-slot .cl-formButtonPrimary:focus,
+.auth-clerk-slot .cl-formButtonPrimary:active {
+  background-color: var(--accent-hover) !important;
+}
+
+.auth-clerk-slot .cl-socialButtonsBlockButton {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+.auth-clerk-slot .cl-socialButtonsBlockButton:hover {
+  background-color: var(--surface-hover) !important;
+}
+
+.auth-clerk-slot .cl-footer,
+.auth-clerk-slot .cl-footerPages,
+.auth-clerk-slot .cl-badge,
+.auth-clerk-slot [class*="developmentMode"] {
+  color: var(--foreground-muted) !important;
 }

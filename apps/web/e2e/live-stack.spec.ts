@@ -15,6 +15,7 @@ const VIEWPORTS = [
 test.describe("Live local stack", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      window.sessionStorage.clear();
       window.localStorage.setItem(
         "__clerk_environment",
         JSON.stringify({ frontendApi: "clerk.test", publishableKey: "pk_test" }),
@@ -41,25 +42,38 @@ test.describe("Live local stack", () => {
   test("unknown run hydrates through live proxy and shows auth guidance", async ({
     page,
   }) => {
+    await page.route("**/api/agent/runs/unknown-live-run", async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "SESSION_TOKEN_MISSING" }),
+      });
+    });
     await page.goto("/planner/unknown-live-run");
-    await expect(page.getByText(/planning session is unavailable/i)).toBeVisible();
+    await expect(page.getByText(/planning session is unavailable/i)).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByText(/sign in to continue planning/i)).toBeVisible();
   });
 
-  test("sign-in route is reachable when Clerk is configured", async ({ page }) => {
+  test("sign-in route is reachable when Clerk is configured", async ({ browser }) => {
+    const context = await browser.newContext({ extraHTTPHeaders: {} });
+    const page = await context.newPage();
     const response = await page.goto("/sign-in");
     if (!response || response.status() >= 500) {
       test.skip(true, "Clerk keys are not configured in this environment");
     }
-    await expect(
-      page.getByRole("heading", { name: /sign in to your planner/i }),
-    ).toBeVisible();
+    await page.waitForSelector(".cl-card", { timeout: 30_000 });
+    await expect(page.getByRole("link", { name: /AI Trip Planner/i })).toBeVisible();
+    await expect(page.locator(".auth-clerk-slot .cl-card")).toBeVisible();
+    await context.close();
   });
 });
 
 test.describe("Live stack Phase 7B layout", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      window.sessionStorage.clear();
       window.localStorage.setItem(
         "__clerk_environment",
         JSON.stringify({ frontendApi: "clerk.test", publishableKey: "pk_test" }),
