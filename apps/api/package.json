@@ -1,0 +1,13 @@
+{
+  "name": "@agentic-travel-engine/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "build": "uv run python -c \"import app.main\"",
+    "lint": "uv run ruff check app tests && uv run ruff format --check app tests",
+    "type-check": "uv run mypy app tests",
+    "test": "uv run pytest",
+    "format": "uv run ruff format app tests"
+  }
+}
