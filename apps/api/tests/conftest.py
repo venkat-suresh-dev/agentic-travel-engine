@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from testcontainers.community.postgres import PostgresContainer
 
+pytest_plugins = ["tests.fakes.weather", "tests.fakes.llm_fixtures"]
+
 
 def _to_async_database_url(url: str) -> str:
     if url.startswith("postgresql+asyncpg://"):

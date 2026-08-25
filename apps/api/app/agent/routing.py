@@ -6,12 +6,12 @@ from typing import Literal
 
 from app.agent.state import AgentState, validation_from_state
 
-RouteAfterValidation = Literal["ask_user", "__end__"]
+RouteAfterValidation = Literal["fetch_weather", "ask_user"]
 
 
 def route_after_validation(state: AgentState) -> RouteAfterValidation:
-    """Route to ask_user when requirements are incomplete, otherwise end the graph."""
+    """Route complete requirements to weather fetch; otherwise ask for clarification."""
     validation = validation_from_state(state)
     if validation is not None and validation.is_complete:
-        return "__end__"
+        return "fetch_weather"
     return "ask_user"

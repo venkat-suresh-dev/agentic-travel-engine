@@ -1,6 +1,6 @@
-# Trip Planner Agent (Phase 2A)
+# Trip Planner Agent (Phase 2A / 3A)
 
-This module contains the first production-shaped LangGraph orchestration for the AI Trip Planner.
+This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
 ## Graph topology
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → END
+  ├── complete → fetch_weather → END
   └── incomplete → ask_user → END
 ```
 
@@ -28,6 +28,8 @@ Important fields:
 | `trip_request` | Structured requirements produced by extraction |
 | `validation` | Deterministic completeness result |
 | `clarification` | Structured prompts for missing fields |
+| `weather_forecast` | Normalized weather facts from the MCP weather tool |
+| `weather_tool_metadata` | Tool-call provenance for observability |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -48,6 +50,14 @@ Structured domain models live in `app/domain/trip_request.py`.
 - Required fields: destination, travelers, budget, departure city, and either duration or start date.
 - Does **not** invent missing values.
 
+### `fetch_weather` (Phase 3A)
+
+- Invoked only after validation reports complete requirements.
+- Builds a deterministic `WeatherForecastRequest` from the validated `TripRequest`.
+- Calls `WeatherTool` → `WeatherService` → Open-Meteo via the MCP tool package.
+- Stores normalized forecast data and tool metadata in graph state.
+- Does **not** let the LLM invent weather facts.
+
 ### `ask_user`
 
 - Produces structured clarification metadata for missing fields.
@@ -57,7 +67,7 @@ Structured domain models live in `app/domain/trip_request.py`.
 
 `app/agent/routing.py` contains `route_after_validation`, which routes:
 
-- complete requirements → graph end
+- complete requirements → `fetch_weather`
 - incomplete requirements → `ask_user`
 
 Routing is tested independently from node implementations.
@@ -94,15 +104,33 @@ Current limitations:
 - Extraction failures return `status: "failed"` in the response body (`201` for new runs, `200` for clarifications) rather than leaking internal errors.
 - Durable conversation persistence belongs to a later phase.
 
+## Weather tool boundary (Phase 3A)
+
+```text
+fetch_weather node
+    ↓
+WeatherTool (apps/api)
+    ↓
+WeatherService (packages/mcp-tools)
+    ↓
+MCP get_weather_forecast
+    ↓
+Open-Meteo geocoding + forecast
+```
+
+See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and degraded-mode behavior.
+
 ## Deferred to later phases
 
-- MCP tools and external travel APIs
+- Additional MCP tools (flights, hotels, restaurants, attractions, maps, currency)
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
 - Langfuse tracing
 - Production checkpoint storage
+- Redis-backed weather cache
 
 ## Dependencies
 
 - `langgraph==1.2.11`
 - `anthropic==1.0.0` (structured extraction via `messages.parse`)
+- `mcp>=2.0.0` (weather MCP server in `packages/mcp-tools`)

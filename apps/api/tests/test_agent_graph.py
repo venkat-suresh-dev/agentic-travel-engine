@@ -13,6 +13,7 @@ from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.tools.weather import WeatherTool
 from pydantic import ValidationError
 
 from tests.fakes.extract_stub import extract_from_text
@@ -30,8 +31,14 @@ def fake_adapter() -> FakeLLMAdapter:
 
 
 @pytest.fixture
-def agent_service(fake_adapter: FakeLLMAdapter) -> TripPlannerAgentService:
-    return TripPlannerAgentService(llm_adapter=fake_adapter)
+def agent_service(
+    fake_adapter: FakeLLMAdapter,
+    fake_weather_tool: WeatherTool,
+) -> TripPlannerAgentService:
+    return TripPlannerAgentService(
+        llm_adapter=fake_adapter,
+        weather_tool=fake_weather_tool,
+    )
 
 
 def test_trip_request_schema_rejects_invalid_state() -> None:
@@ -143,7 +150,7 @@ def test_route_after_validation_routes_incomplete_to_ask_user() -> None:
     assert route_after_validation(state) == "ask_user"
 
 
-def test_route_after_validation_routes_complete_to_end() -> None:
+def test_route_after_validation_routes_complete_to_fetch_weather() -> None:
     state: AgentState = {
         "validation": ValidationResult(
             is_complete=True,
@@ -151,7 +158,7 @@ def test_route_after_validation_routes_complete_to_end() -> None:
         ).model_dump(mode="json"),
     }
 
-    assert route_after_validation(state) == "__end__"
+    assert route_after_validation(state) == "fetch_weather"
 
 
 def test_graph_complete_request_reaches_terminal_state_without_ask_user(
@@ -166,6 +173,10 @@ def test_graph_complete_request_reaches_terminal_state_without_ask_user(
     assert result.clarification is None
     assert result.validation is not None
     assert result.validation.is_complete is True
+    assert result.weather_forecast is not None
+    assert result.weather_forecast.data_status.value == "live"
+    assert result.weather_tool_metadata is not None
+    assert result.weather_tool_metadata.tool_name == "get_weather_forecast"
 
 
 def test_graph_incomplete_request_routes_to_ask_user(
@@ -179,6 +190,7 @@ def test_graph_incomplete_request_routes_to_ask_user(
     assert result.clarification is not None
     assert "budget_amount" in result.clarification.missing_fields
     assert "departure_city" in result.clarification.missing_fields
+    assert result.weather_forecast is None
 
 
 def test_graph_missing_budget(agent_service: TripPlannerAgentService) -> None:
@@ -254,10 +266,14 @@ def test_graph_checkpoint_allows_state_lookup(
 
 def test_graph_is_integration_testable_end_to_end(
     fake_adapter: FakeLLMAdapter,
+    fake_weather_tool: WeatherTool,
 ) -> None:
     from langchain_core.runnables import RunnableConfig
 
-    graph = compile_trip_planner_graph(llm_adapter=fake_adapter)
+    graph = compile_trip_planner_graph(
+        llm_adapter=fake_adapter,
+        weather_tool=fake_weather_tool,
+    )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)
 

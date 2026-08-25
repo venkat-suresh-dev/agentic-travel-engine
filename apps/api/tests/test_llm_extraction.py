@@ -14,6 +14,7 @@ from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import TripRequest
 from app.llm.anthropic import AnthropicLLMAdapter
 from app.llm.exceptions import LLMProviderError, LLMStructuredOutputError
+from app.tools.weather import WeatherTool
 from pydantic import BaseModel
 
 from tests.fakes.extract_stub import extract_from_text
@@ -36,8 +37,13 @@ def fake_adapter() -> FakeLLMAdapter:
 
 
 @pytest.fixture
-def agent_service(fake_adapter: FakeLLMAdapter) -> TripPlannerAgentService:
-    return TripPlannerAgentService(llm_adapter=fake_adapter)
+def agent_service(
+    fake_adapter: FakeLLMAdapter,
+    fake_weather_tool: WeatherTool,
+) -> TripPlannerAgentService:
+    return TripPlannerAgentService(
+        llm_adapter=fake_adapter, weather_tool=fake_weather_tool
+    )
 
 
 def test_fully_specified_trip_request(fake_adapter: FakeLLMAdapter) -> None:
@@ -339,3 +345,5 @@ def test_graph_complete_flow_with_fake_adapter(
     assert result.status == GraphStatus.COMPLETE
     assert result.trip_request is not None
     assert result.trip_request.destination == "Dubai"
+    assert result.weather_forecast is not None
+    assert result.weather_tool_metadata is not None

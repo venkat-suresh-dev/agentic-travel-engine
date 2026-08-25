@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.main import create_app
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.users import resolve_or_create_user
+from app.tools.weather import WeatherTool
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from langgraph.checkpoint.memory import InMemorySaver
@@ -45,10 +46,12 @@ def fake_adapter() -> FakeLLMAdapter:
 def agent_service(
     fake_adapter: FakeLLMAdapter,
     checkpointer: InMemorySaver,
+    fake_weather_tool: WeatherTool,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
         checkpointer=checkpointer,
+        weather_tool=fake_weather_tool,
     )
 
 

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-4-20250514"
     llm_max_tokens: int = 1024
 
+    weather_request_timeout_seconds: float = 5.0
+    weather_cache_ttl_seconds: int = 1800
+
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod
     def parse_authorized_parties(cls, value: object) -> list[str]:

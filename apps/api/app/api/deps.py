@@ -5,6 +5,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from mcp_tools.weather.cache import WeatherCache
+from mcp_tools.weather.geocoding.open_meteo import OpenMeteoGeocodingProvider
+from mcp_tools.weather.providers.open_meteo import OpenMeteoWeatherProvider
+from mcp_tools.weather.service import WeatherService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.service import TripPlannerAgentService
@@ -22,6 +26,7 @@ from app.llm.factory import build_llm_adapter
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
+from app.tools.weather import WeatherTool
 
 
 @lru_cache
@@ -72,8 +77,26 @@ def get_agent_run_registry() -> AgentRunRegistry:
 
 
 @lru_cache
+def get_weather_tool() -> WeatherTool:
+    timeout_seconds = settings.weather_request_timeout_seconds
+    service = WeatherService(
+        geocoding_provider=OpenMeteoGeocodingProvider(
+            timeout_seconds=timeout_seconds,
+        ),
+        weather_provider=OpenMeteoWeatherProvider(
+            timeout_seconds=timeout_seconds,
+        ),
+        cache=WeatherCache(ttl_seconds=settings.weather_cache_ttl_seconds),
+    )
+    return WeatherTool(service)
+
+
+@lru_cache
 def get_trip_planner_agent_service() -> TripPlannerAgentService:
-    return TripPlannerAgentService(llm_adapter=build_llm_adapter())
+    return TripPlannerAgentService(
+        llm_adapter=build_llm_adapter(),
+        weather_tool=get_weather_tool(),
+    )
 
 
 def get_agent_run_service(
