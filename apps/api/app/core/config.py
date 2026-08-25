@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     weather_request_timeout_seconds: float = 5.0
     weather_cache_ttl_seconds: int = 1800
 
+    amadeus_client_id: str = ""
+    amadeus_client_secret: str = ""
+    amadeus_base_url: str = "https://test.api.amadeus.com"
+    flights_request_timeout_seconds: float = 5.0
+    flights_cache_ttl_seconds: int = 300
+
     @field_validator("clerk_authorized_parties", mode="before")
     @classmethod
     def parse_authorized_parties(cls, value: object) -> list[str]:

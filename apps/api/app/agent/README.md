@@ -1,4 +1,4 @@
-# Trip Planner Agent (Phase 2A / 3A)
+# Trip Planner Agent (Phase 2A / 3A / 3B)
 
 This module contains the production-shaped LangGraph orchestration for the AI Trip Planner.
 
@@ -10,7 +10,7 @@ START
 extract_requirements
   ↓
 validate_requirements
-  ├── complete → fetch_weather → END
+  ├── complete → fetch_weather → search_flights → END
   └── incomplete → ask_user → END
 ```
 
@@ -29,7 +29,9 @@ Important fields:
 | `validation` | Deterministic completeness result |
 | `clarification` | Structured prompts for missing fields |
 | `weather_forecast` | Normalized weather facts from the MCP weather tool |
-| `weather_tool_metadata` | Tool-call provenance for observability |
+| `weather_tool_metadata` | Tool-call provenance for weather |
+| `flight_search` | Normalized flight offers from the MCP flight tool |
+| `flight_tool_metadata` | Tool-call provenance for flights |
 | `status` | Current graph lifecycle status |
 
 Structured domain models live in `app/domain/trip_request.py`.
@@ -57,6 +59,16 @@ Structured domain models live in `app/domain/trip_request.py`.
 - Calls `WeatherTool` → `WeatherService` → Open-Meteo via the MCP tool package.
 - Stores normalized forecast data and tool metadata in graph state.
 - Does **not** let the LLM invent weather facts.
+
+### `search_flights` (Phase 3B)
+
+- Invoked only after weather fetch on the complete-request path.
+- Builds a deterministic `FlightSearchRequest` from validated `TripRequest` fields.
+- Resolves departure city and destination to IATA codes via `AirportCodeResolver`.
+- Calls `FlightTool` → `FlightService` → Amadeus Flight Offers Search.
+- Stores normalized offers and tool metadata in graph state.
+- Results are search snapshots only — not booking guarantees.
+- Does **not** let the LLM invent flight prices or schedules.
 
 ### `ask_user`
 
@@ -120,9 +132,25 @@ Open-Meteo geocoding + forecast
 
 See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and degraded-mode behavior.
 
+## Flight tool boundary (Phase 3B)
+
+```text
+search_flights node
+    ↓
+FlightTool (apps/api)
+    ↓
+FlightService (packages/mcp-tools)
+    ↓
+MCP search_flights
+    ↓
+Amadeus auth + Flight Offers Search
+```
+
+See `packages/mcp-tools/README.md` for MCP contract, cache, retry, and no-booking semantics.
+
 ## Deferred to later phases
 
-- Additional MCP tools (flights, hotels, restaurants, attractions, maps, currency)
+- Additional MCP tools (hotels, restaurants, attractions, maps, currency conversion)
 - RAG, budget engine, itinerary generation, critic loop
 - SSE streaming endpoints
 - Langfuse tracing

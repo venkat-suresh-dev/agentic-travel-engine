@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "type": "flight-offer",
+      "id": "1",
+      "source": "GDS",
+      "instantTicketingRequired": false,
+      "nonHomogeneous": false,
+      "oneWay": false,
+      "lastTicketingDate": "2026-12-10",
+      "numberOfBookableSeats": 9,
+      "itineraries": [
+        {
+          "duration": "PT3H25M",
+          "segments": [
+            {
+              "departure": {
+                "iataCode": "BOM",
+                "at": "2026-12-01T06:00:00"
+              },
+              "arrival": {
+                "iataCode": "DXB",
+                "at": "2026-12-01T08:25:00"
+              },
+              "carrierCode": "EK",
+              "number": "501",
+              "duration": "PT3H25M",
+              "numberOfStops": 0
+            }
+          ]
+        },
+        {
+          "duration": "PT3H30M",
+          "segments": [
+            {
+              "departure": {
+                "iataCode": "DXB",
+                "at": "2026-12-06T10:00:00"
+              },
+              "arrival": {
+                "iataCode": "BOM",
+                "at": "2026-12-06T14:30:00"
+              },
+              "carrierCode": "AI",
+              "number": "220",
+              "duration": "PT3H30M",
+              "numberOfStops": 0
+            }
+          ]
+        }
+      ],
+      "price": {
+        "currency": "INR",
+        "total": "45000.00",
+        "grandTotal": "45000.00"
+      },
+      "validatingAirlineCodes": ["EK"]
+    }
+  ]
+}

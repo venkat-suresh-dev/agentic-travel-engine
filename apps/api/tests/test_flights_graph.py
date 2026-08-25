@@ -1,4 +1,4 @@
-"""Graph integration tests for the weather vertical slice."""
+"""Graph integration tests for the flight vertical slice."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ COMPLETE_REQUEST = (
 INCOMPLETE_REQUEST = "Plan a 5-day trip to Dubai for 2 people."
 
 
-def test_complete_request_stores_weather_in_graph_state(
+def test_complete_request_stores_flights_in_graph_state(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -29,18 +29,18 @@ def test_complete_request_stores_weather_in_graph_state(
         airport_resolver=fake_airport_resolver,
     )
 
-    result = service.start(COMPLETE_REQUEST, thread_id="weather-complete")
+    result = service.start(COMPLETE_REQUEST, thread_id="flights-complete")
 
     assert result.status == GraphStatus.COMPLETE
     assert result.weather_forecast is not None
-    assert result.weather_forecast.data_status.value == "live"
-    assert result.weather_forecast.forecast
-    assert result.weather_tool_metadata is not None
-    assert result.weather_tool_metadata.tool_name == "get_weather_forecast"
-    assert result.weather_tool_metadata.provider == "open-meteo"
+    assert result.flight_search is not None
+    assert result.flight_search.data_status.value == "live"
+    assert result.flight_search.offers
+    assert result.flight_tool_metadata is not None
+    assert result.flight_tool_metadata.tool_name == "search_flights"
 
 
-def test_incomplete_request_does_not_fetch_weather(
+def test_incomplete_request_does_not_fetch_flights(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -53,8 +53,8 @@ def test_incomplete_request_does_not_fetch_weather(
         airport_resolver=fake_airport_resolver,
     )
 
-    result = service.start(INCOMPLETE_REQUEST, thread_id="weather-incomplete")
+    result = service.start(INCOMPLETE_REQUEST, thread_id="flights-incomplete")
 
     assert result.status == GraphStatus.AWAITING_USER
-    assert result.weather_forecast is None
-    assert result.weather_tool_metadata is None
+    assert result.flight_search is None
+    assert result.flight_tool_metadata is None

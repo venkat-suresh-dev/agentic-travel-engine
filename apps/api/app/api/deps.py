@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from mcp_tools.flights.airports.base import AirportCodeResolver
 from mcp_tools.weather.cache import WeatherCache
 from mcp_tools.weather.geocoding.open_meteo import OpenMeteoGeocodingProvider
 from mcp_tools.weather.providers.open_meteo import OpenMeteoWeatherProvider
@@ -26,6 +27,8 @@ from app.llm.factory import build_llm_adapter
 from app.services.agent_runs import AgentRunRegistry, AgentRunService
 from app.services.ownership import get_owned_trip as load_owned_trip
 from app.services.users import resolve_or_create_user
+from app.tools.flights import FlightTool
+from app.tools.flights_factory import build_airport_resolver, build_flight_service
 from app.tools.weather import WeatherTool
 
 
@@ -92,10 +95,22 @@ def get_weather_tool() -> WeatherTool:
 
 
 @lru_cache
+def get_flight_tool() -> FlightTool:
+    return FlightTool(build_flight_service())
+
+
+@lru_cache
+def get_airport_resolver() -> AirportCodeResolver:
+    return build_airport_resolver()
+
+
+@lru_cache
 def get_trip_planner_agent_service() -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=build_llm_adapter(),
         weather_tool=get_weather_tool(),
+        flight_tool=get_flight_tool(),
+        airport_resolver=get_airport_resolver(),
     )
 
 

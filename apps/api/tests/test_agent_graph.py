@@ -13,10 +13,12 @@ from app.agent.routing import route_after_validation
 from app.agent.service import TripPlannerAgentService
 from app.agent.state import AgentState, GraphStatus
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
+from app.tools.flights import FlightTool
 from app.tools.weather import WeatherTool
 from pydantic import ValidationError
 
 from tests.fakes.extract_stub import extract_from_text
+from tests.fakes.flights_providers import FakeAirportCodeResolver
 from tests.fakes.llm import FakeLLMAdapter
 
 COMPLETE_REQUEST = (
@@ -34,10 +36,14 @@ def fake_adapter() -> FakeLLMAdapter:
 def agent_service(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
+    fake_flight_tool: FlightTool,
+    fake_airport_resolver: FakeAirportCodeResolver,
 ) -> TripPlannerAgentService:
     return TripPlannerAgentService(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
+        flight_tool=fake_flight_tool,
+        airport_resolver=fake_airport_resolver,
     )
 
 
@@ -177,6 +183,9 @@ def test_graph_complete_request_reaches_terminal_state_without_ask_user(
     assert result.weather_forecast.data_status.value == "live"
     assert result.weather_tool_metadata is not None
     assert result.weather_tool_metadata.tool_name == "get_weather_forecast"
+    assert result.flight_search is not None
+    assert result.flight_search.data_status.value == "live"
+    assert result.flight_tool_metadata is not None
 
 
 def test_graph_incomplete_request_routes_to_ask_user(
@@ -191,6 +200,7 @@ def test_graph_incomplete_request_routes_to_ask_user(
     assert "budget_amount" in result.clarification.missing_fields
     assert "departure_city" in result.clarification.missing_fields
     assert result.weather_forecast is None
+    assert result.flight_search is None
 
 
 def test_graph_missing_budget(agent_service: TripPlannerAgentService) -> None:
@@ -267,12 +277,16 @@ def test_graph_checkpoint_allows_state_lookup(
 def test_graph_is_integration_testable_end_to_end(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
+    fake_flight_tool: FlightTool,
+    fake_airport_resolver: FakeAirportCodeResolver,
 ) -> None:
     from langchain_core.runnables import RunnableConfig
 
     graph = compile_trip_planner_graph(
         llm_adapter=fake_adapter,
         weather_tool=fake_weather_tool,
+        flight_tool=fake_flight_tool,
+        airport_resolver=fake_airport_resolver,
     )
     config: RunnableConfig = {"configurable": {"thread_id": "integration-thread"}}
     result = graph.invoke({"user_request": COMPLETE_REQUEST}, config=config)
