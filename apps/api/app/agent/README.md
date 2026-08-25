@@ -68,7 +68,7 @@ The graph is compiled with LangGraph's `InMemorySaver` checkpointer for thread-s
 
 1. An incomplete request ends in `awaiting_user` with structured clarification metadata.
 2. A later invocation with the same `thread_id` and new `user_clarification` resumes from the checkpoint.
-3. `extract_requirements` merges the clarification into the existing `trip_request` without discarding prior values.
+3. `extract_requirements` merges the clarification into the existing `trip_request` without discarding prior values. Merge semantics are implemented in `app/agent/trip_request_merge.py` and preserve existing non-null fields unless the new extraction explicitly supplies a replacement value.
 
 `TripPlannerAgentService` in `app/agent/service.py` exposes:
 
@@ -91,6 +91,7 @@ Current limitations:
 
 - Run ownership and graph checkpoints are stored in process memory only.
 - Restarting the API process clears all in-flight runs.
+- Extraction failures return `status: "failed"` in the response body (`201` for new runs, `200` for clarifications) rather than leaking internal errors.
 - Durable conversation persistence belongs to a later phase.
 
 ## Deferred to later phases

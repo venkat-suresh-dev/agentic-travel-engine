@@ -86,21 +86,7 @@ class FakeLLMAdapter:
 
         if "New user clarification:" in user_prompt:
             clarification = user_prompt.split("New user clarification:", 1)[1].strip()
-            existing_json = (
-                user_prompt.split("Existing extracted requirements JSON:", 1)[1]
-                .split("New user clarification:", 1)[0]
-                .strip()
-            )
-            existing = TripRequest.model_validate_json(existing_json)
-            extracted = extract_from_text(clarification)
-            merged = existing.model_copy(deep=True)
-            for field_name in TripRequest.model_fields:
-                value = getattr(extracted, field_name)
-                if value is not None and field_name != "preferences":
-                    setattr(merged, field_name, value)
-                elif field_name == "preferences" and value:
-                    merged.preferences = value
-            return merged  # type: ignore[return-value]
+            return extract_from_text(clarification)  # type: ignore[return-value]
 
         if (
             "Extract structured trip requirements from this user request:"
