@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -25,10 +25,13 @@ describe("PlannerEmptyState", () => {
     renderWithProviders(<PlannerEmptyState onSubmit={() => undefined} />);
     expect(
       screen.getByRole("heading", {
-        name: /plan a trip without starting from a spreadsheet/i,
+        name: /plan a trip without the spreadsheet/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/popular starting points/i)).toBeInTheDocument();
+    expect(screen.getByTestId("planner-empty-composer")).toBeInTheDocument();
+    expect(screen.getByTestId("planner-empty-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("planner-empty-destinations")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dubai · 5 days example/i })).toBeInTheDocument();
   });
 });
 
@@ -42,13 +45,17 @@ describe("TripHeader", () => {
 
 describe("BudgetPanel", () => {
   it("uses authoritative backend budget values", () => {
-    renderWithProviders(<BudgetPanel budget={completeRunFixture.budget!} />);
+    renderWithProviders(<BudgetPanel budget={completeRunFixture.budget!} variant="full" />);
     expect(
       screen.getByRole("heading", { name: /how your budget is tracking/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/₹1,50,000/).length).toBeGreaterThanOrEqual(1);
-    const remainingCard = screen.getByText("Remaining").closest("div");
-    expect(within(remainingCard!).getByText(/₹6,000/)).toBeInTheDocument();
+  });
+
+  it("renders compact budget snapshot", () => {
+    renderWithProviders(<BudgetPanel budget={completeRunFixture.budget!} variant="compact" />);
+    expect(screen.getByText(/₹1,44,000/)).toBeInTheDocument();
+    expect(screen.getByText(/remaining/i)).toBeInTheDocument();
   });
 });
 
@@ -60,7 +67,8 @@ describe("ItineraryTimeline", () => {
         affectedDays={[1]}
       />,
     );
-    expect(screen.getByText(/day-by-day plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/your day-by-day plan/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /day 01/i })).toBeInTheDocument();
     expect(screen.getByText("Breakfast")).toBeInTheDocument();
   });
 });
@@ -86,9 +94,9 @@ describe("ProvenanceBadge", () => {
 describe("ModificationSummary", () => {
   it("surfaces structured operation metadata", () => {
     renderWithProviders(<ModificationSummary run={modificationRunFixture} />);
-    expect(screen.getByText(/what changed/i)).toBeInTheDocument();
-    expect(screen.getByText(/day 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/recalculated/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/modification summary/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Day 2$/)).toBeInTheDocument();
+    expect(screen.getByText(/budget recalculated/i)).toBeInTheDocument();
   });
 });
 

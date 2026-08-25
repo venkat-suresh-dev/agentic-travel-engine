@@ -14,6 +14,7 @@ interface PlannerComposerProps {
   loading?: boolean;
   onSubmit: (message: string) => Promise<void> | void;
   suggestions?: string[];
+  compact?: boolean;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export function PlannerComposer({
   loading = false,
   onSubmit,
   suggestions = [],
+  compact = false,
   className,
 }: PlannerComposerProps) {
   const [message, setMessage] = useState("");
@@ -39,7 +41,7 @@ export function PlannerComposer({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn(compact ? "space-y-2" : "space-y-3", className)}>
       <label id={labelId} className="sr-only" htmlFor="planner-composer">
         Trip planning message
       </label>
@@ -50,6 +52,7 @@ export function PlannerComposer({
         onChange={(event) => setMessage(event.target.value)}
         placeholder={placeholder}
         disabled={disabled || loading}
+        className={cn(compact && "min-h-[72px] text-sm")}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();

@@ -14,9 +14,9 @@ export type PlanningPhase =
   | "validating";
 
 const PHASES: Array<{ id: PlanningPhase; label: string }> = [
-  { id: "understanding", label: "Understanding your preferences" },
-  { id: "searching", label: "Finding the best options" },
-  { id: "weather", label: "Checking weather" },
+  { id: "understanding", label: "Understanding trip requirements" },
+  { id: "searching", label: "Searching travel options" },
+  { id: "weather", label: "Checking conditions" },
   { id: "building", label: "Building the itinerary" },
   { id: "budget", label: "Checking the budget" },
   { id: "validating", label: "Validating the plan" },
@@ -39,48 +39,46 @@ export function PlanningState({
     mode === "modification"
       ? "Applying your changes"
       : mode === "clarification"
-        ? "Updating your trip details"
-        : "Planning your trip";
+        ? "Updating trip details"
+        : "Plan in progress";
 
   return (
     <div
-      className={cn(
-        "rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]",
-        className,
-      )}
+      className={cn("space-y-3", className)}
       role="status"
       aria-live="polite"
       aria-label={title}
     >
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
-        In progress
-      </p>
-      <h3 className="mt-2 font-display text-2xl text-[var(--foreground)]">{title}</h3>
-      <ol className="mt-6 space-y-3">
+      <div>
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+          {title}
+        </p>
+      </div>
+      <ol className="space-y-2">
         {PHASES.map((phase, index) => {
           const isComplete = index < activeIndex;
           const isActive = index === activeIndex;
           return (
             <motion.li
               key={phase.id}
-              className="flex items-center gap-3 text-sm"
-              initial={reduceMotion ? false : { opacity: 0, x: -8 }}
+              className="flex items-center gap-2 text-xs"
+              initial={reduceMotion ? false : { opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: index * 0.04 }}
             >
               {isComplete ? (
                 <CheckCircle2
-                  className="h-4 w-4 text-[var(--accent)]"
+                  className="h-3.5 w-3.5 text-[var(--accent)]"
                   aria-hidden
                 />
               ) : isActive ? (
                 <Loader2
-                  className="h-4 w-4 animate-spin text-[var(--accent)]"
+                  className="h-3.5 w-3.5 animate-spin text-[var(--accent)]"
                   aria-hidden
                 />
               ) : (
                 <CircleDashed
-                  className="h-4 w-4 text-[var(--foreground-muted)]"
+                  className="h-3.5 w-3.5 text-[var(--foreground-muted)]"
                   aria-hidden
                 />
               )}

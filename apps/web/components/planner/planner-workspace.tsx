@@ -54,80 +54,131 @@ export function PlannerWorkspace({
   const modificationFailed =
     run?.status === "failed" && run.modification_failure?.preserved_itinerary;
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-        <ConversationPanel history={history} className="min-h-[420px]" />
-        <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
-          {isMutating ? (
-            <PlanningState activePhase={planningPhase} mode={planningMode} />
-          ) : (
-            <>
-              {isClarifying && run ? (
-                <p className="mb-4 text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                  {clarificationPrompt(run)}
-                </p>
-              ) : hasItinerary ? (
-                <p className="mb-4 text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                  What would you like to change?
-                </p>
-              ) : null}
-              <PlannerComposer
-                loading={isMutating}
-                disabled={!run}
-                placeholder={
-                  hasItinerary
-                    ? "Describe a change to your itinerary…"
-                    : "Add the missing details or refine your request…"
-                }
-                submitLabel={hasItinerary ? "Apply change" : "Continue planning"}
-                suggestions={hasItinerary ? MODIFICATION_SUGGESTIONS : []}
-                onSubmit={onSendMessage}
-              />
-            </>
-          )}
-        </div>
-      </div>
+  if (!run) {
+    return null;
+  }
 
-      <div className="space-y-6">
-        {run ? <TripHeader run={run} /> : null}
-
-        {modificationFailed ? (
-          <FailureBanner
-            title="We couldn't apply that change"
-            message={run?.error ?? run?.modification_failure?.message ?? ""}
-            preserved
-          />
-        ) : null}
-
-        {run?.planning_failure ? (
-          <FailureBanner
-            title="Planning could not be completed"
-            message={run.planning_failure.message}
-          />
-        ) : null}
-
-        {run?.operation.operation_type === "modification" ? (
-          <ModificationSummary run={run} />
-        ) : null}
-
-        {run?.budget ? <BudgetPanel budget={run.budget} /> : null}
-
-        {run?.itinerary ? (
-          <ItineraryTimeline
-            itinerary={run.itinerary}
-            affectedDays={run.operation.affected_days}
-          />
-        ) : !isMutating && run?.status === "needs_clarification" ? (
-          <div className="rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-12 text-center">
-            <p className="font-display text-2xl text-[var(--foreground)]">
-              Almost there
-            </p>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[var(--foreground-secondary)]">
-              Once the missing details are provided, we will search live travel
-              data and compose your itinerary here.
+  if (!hasItinerary && !isMutating) {
+    return (
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+        <div className="space-y-3">
+          <TripHeader run={run} />
+          {run.planning_failure ? (
+            <FailureBanner
+              title="Planning could not be completed"
+              message={run.planning_failure.message}
+            />
+          ) : null}
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center">
+            <p className="font-display text-xl text-[var(--foreground)]">Almost there</p>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[var(--foreground-secondary)]">
+              Once the missing details are provided, we will search live travel data
+              and compose your itinerary here.
             </p>
           </div>
+        </div>
+        <aside className="space-y-3">
+          <ConversationPanel history={history} />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            {isClarifying ? (
+              <p className="mb-3 text-xs leading-relaxed text-[var(--foreground-secondary)]">
+                {clarificationPrompt(run)}
+              </p>
+            ) : null}
+            <PlannerComposer
+              loading={isMutating}
+              disabled={!run}
+              placeholder="Add the missing details or refine your request…"
+              submitLabel="Continue planning"
+              onSubmit={onSendMessage}
+            />
+          </div>
+        </aside>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <TripHeader run={run} />
+
+      {run.budget ? (
+        <BudgetPanel budget={run.budget} variant="inline" className="lg:hidden" />
+      ) : null}
+
+      {modificationFailed ? (
+        <FailureBanner
+          title="We couldn't apply that change"
+          message={run.error ?? run.modification_failure?.message ?? ""}
+          preserved
+        />
+      ) : null}
+
+      {run.planning_failure ? (
+        <FailureBanner
+          title="Planning could not be completed"
+          message={run.planning_failure.message}
+        />
+      ) : null}
+
+      {run.operation.operation_type === "modification" ? (
+        <ModificationSummary run={run} />
+      ) : null}
+
+      <div className="grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_220px] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)_240px]">
+        <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-[3.75rem] lg:max-h-[calc(100vh-4.5rem)]">
+          <ConversationPanel history={history} />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            {isMutating ? (
+              <PlanningState activePhase={planningPhase} mode={planningMode} />
+            ) : (
+              <>
+                {hasItinerary ? (
+                  <p className="mb-2 text-xs text-[var(--foreground-secondary)]">
+                    What would you like to change?
+                  </p>
+                ) : isClarifying ? (
+                  <p className="mb-2 text-xs leading-relaxed text-[var(--foreground-secondary)]">
+                    {clarificationPrompt(run)}
+                  </p>
+                ) : null}
+                <PlannerComposer
+                  loading={isMutating}
+                  disabled={!run}
+                  placeholder={
+                    hasItinerary
+                      ? "Describe a change to your itinerary…"
+                      : "Add the missing details or refine your request…"
+                  }
+                  submitLabel={hasItinerary ? "Apply change" : "Continue planning"}
+                  suggestions={hasItinerary ? MODIFICATION_SUGGESTIONS : []}
+                  onSubmit={onSendMessage}
+                  compact
+                />
+              </>
+            )}
+          </div>
+        </aside>
+
+        <main className="order-1 min-w-0 lg:order-2">
+          {run.itinerary ? (
+            <ItineraryTimeline
+              key={`${run.run_id}-${run.operation.changed_item_ids.join(",")}`}
+              itinerary={run.itinerary}
+              affectedDays={run.operation.affected_days}
+              changedItemIds={run.operation.changed_item_ids}
+            />
+          ) : isMutating ? (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <PlanningState activePhase={planningPhase} mode={planningMode} />
+            </div>
+          ) : null}
+        </main>
+
+        {run.budget ? (
+          <aside className="order-3 hidden lg:block lg:sticky lg:top-[3.75rem]">
+            <BudgetPanel budget={run.budget} variant="compact" />
+          </aside>
         ) : null}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import type { AgentRunResponse } from "@agentic-travel-engine/shared-types";
 
 import { Badge } from "@/components/ui/badge";
-import { formatDateRange, formatMoney } from "@/lib/planner/format";
+import { formatDateRange, formatMoney, getBudgetHealth } from "@/lib/planner/format";
 import { cn } from "@/lib/utils";
 
 interface TripHeaderProps {
@@ -26,50 +26,73 @@ export function TripHeader({ run, className }: TripHeaderProps) {
     trip?.end_date ?? null,
     duration ?? null,
   );
+  const health = budget ? getBudgetHealth(budget) : null;
+  const summary =
+    run.operation.summary && run.operation.operation_type === "initial_plan"
+      ? run.operation.summary
+      : null;
 
   return (
     <header
       className={cn(
-        "relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-6 py-8 shadow-[var(--shadow-soft)] md:px-8",
+        "rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[var(--shadow-soft)] md:px-5",
         className,
       )}
     >
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(13,92,99,0.08),transparent_55%)]"
-        aria-hidden
-      />
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={run.status === "complete" ? "success" : "warning"}>
               {statusLabel(run.status)}
             </Badge>
             {trip?.trip_type ? (
-              <span className="text-xs uppercase tracking-[0.16em] text-[var(--foreground-muted)]">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
                 {trip.trip_type}
               </span>
             ) : null}
           </div>
-          <h1 className="font-display text-4xl leading-none tracking-tight text-[var(--foreground)] md:text-5xl">
+          <h1 className="mt-1 font-display text-2xl leading-tight tracking-tight text-[var(--foreground)] md:text-3xl">
             {destination}
           </h1>
-          <p className="text-sm text-[var(--foreground-secondary)]">
+          <p className="mt-0.5 text-sm text-[var(--foreground-secondary)]">
             {dateLabel} · {travelers} traveler{travelers === 1 ? "" : "s"}
             {trip?.departure_city ? ` · from ${trip.departure_city}` : ""}
           </p>
+          {summary ? (
+            <p className="mt-1 line-clamp-2 text-sm text-[var(--foreground-muted)]">
+              {summary}
+            </p>
+          ) : null}
         </div>
+
         {budget ? (
-          <div className="min-w-[220px] rounded-2xl bg-[var(--surface)] px-5 py-4 ring-1 ring-[var(--border)]">
-            <p className="text-xs uppercase tracking-[0.16em] text-[var(--foreground-muted)]">
-              Estimated total
-            </p>
-            <p className="mt-1 font-display text-3xl text-[var(--foreground)]">
-              {formatMoney(budget.total_cost, budget.currency)}
-            </p>
-            <p className="mt-1 text-sm text-[var(--foreground-secondary)]">
-              {formatMoney(budget.remaining, budget.currency)} remaining of{" "}
-              {formatMoney(budget.budget_amount, budget.currency)}
-            </p>
+          <div className="flex shrink-0 items-end gap-4 border-t border-[var(--border)] pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+                Estimate
+              </p>
+              <p className="font-display text-2xl leading-none text-[var(--foreground)]">
+                {formatMoney(budget.total_cost, budget.currency)}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--foreground-secondary)]">
+                of {formatMoney(budget.budget_amount, budget.currency)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+                Remaining
+              </p>
+              <p className="text-lg font-medium text-[var(--foreground)]">
+                {formatMoney(budget.remaining, budget.currency)}
+              </p>
+              {health === "near" ? (
+                <p className="text-xs text-[var(--budget-near-fg)]">Near budget</p>
+              ) : health === "over" ? (
+                <p className="text-xs text-[var(--budget-over-fg)]">Over budget</p>
+              ) : (
+                <p className="text-xs text-[var(--budget-under-fg)]">On track</p>
+              )}
+            </div>
           </div>
         ) : null}
       </div>

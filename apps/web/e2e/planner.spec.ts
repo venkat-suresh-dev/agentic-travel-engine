@@ -84,10 +84,13 @@ test.describe("Planner core flow", () => {
     await page.goto("/planner");
     await expect(
       page.getByRole("heading", {
-        name: /plan a trip without starting from a spreadsheet/i,
+        name: /plan a trip without the spreadsheet/i,
       }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: /use example trip 1/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /dubai · 5 days example/i }),
+    ).toBeVisible();
+    await expect(page.getByTestId("planner-empty-cta")).toBeVisible();
   });
 
   test("hydrates planner workspace from GET /api/agent/runs/{run_id}", async ({

@@ -36,23 +36,25 @@ export default function PlannerPage() {
 
   if (startRun.isPending) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <PlanningState
-          activePhase={phases[phaseIndex] ?? "building"}
-          mode="initial"
-        />
+      <div className="flex flex-1 flex-col justify-center">
+        <div className="mx-auto w-full max-w-lg">
+          <PlanningState
+            activePhase={phases[phaseIndex] ?? "building"}
+            mode="initial"
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       {startRun.isError ? (
-        <p role="alert" className="mb-4 text-sm text-[var(--budget-over-fg)]">
+        <p role="alert" className="mb-3 shrink-0 text-sm text-[var(--budget-over-fg)]">
           {errorMessage}
         </p>
       ) : null}
-      <PlannerEmptyState onSubmit={handleSubmit} />
+      <PlannerEmptyState onSubmit={handleSubmit} className="min-h-0 flex-1" />
     </div>
   );
 }

@@ -18,7 +18,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     url: "http://127.0.0.1:3002",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       PLAYWRIGHT: "1",
       NEXT_PUBLIC_PLAYWRIGHT: "1",

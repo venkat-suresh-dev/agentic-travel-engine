@@ -22,23 +22,23 @@ export function ConversationPanel({ history, className }: ConversationPanelProps
   return (
     <section
       className={cn(
-        "flex h-full flex-col rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-soft)]",
+        "flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]",
         className,
       )}
       aria-labelledby="conversation-heading"
     >
-      <div className="border-b border-[var(--border)] px-5 py-4">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
-          Planning conversation
+      <div className="border-b border-[var(--border)] px-3 py-2.5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+          Conversation
         </p>
-        <h2 id="conversation-heading" className="mt-1 font-display text-xl">
+        <h2 id="conversation-heading" className="font-display text-base text-[var(--foreground)]">
           Your requests
         </h2>
       </div>
-      <div className="scrollbar-subtle flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div className="scrollbar-subtle max-h-[140px] space-y-2 overflow-y-auto px-3 py-2 lg:max-h-[160px]">
         {history.length === 0 ? (
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Your planning conversation will appear here as you refine the trip.
+          <p className="text-xs text-[var(--foreground-muted)]">
+            Planning messages appear here as you refine the trip.
           </p>
         ) : (
           history.map((entry) => {
@@ -46,22 +46,20 @@ export function ConversationPanel({ history, className }: ConversationPanelProps
             return (
               <motion.article
                 key={entry.id}
-                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(
-                  "rounded-2xl px-4 py-3",
+                  "rounded-lg px-2.5 py-2",
                   entry.role === "user"
                     ? "bg-[var(--surface-elevated)] ring-1 ring-[var(--border)]"
                     : "bg-[var(--surface-muted)]",
                 )}
               >
-                <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
+                  <Icon className="h-3 w-3" aria-hidden />
                   <span>{entry.role === "user" ? "You" : "Planner"}</span>
-                  <span aria-hidden>·</span>
-                  <span>{entry.kind}</span>
                 </div>
-                <p className="text-sm leading-relaxed text-[var(--foreground)]">
+                <p className="line-clamp-3 text-xs leading-relaxed text-[var(--foreground)]">
                   {entry.content}
                 </p>
               </motion.article>
