@@ -14,6 +14,54 @@ pnpm dev
 
 The API runs at `http://127.0.0.1:8000`.
 
+## Authentication
+
+Authentication uses [Clerk](https://clerk.com) as the initial provider. Clerk-specific verification lives in `app/auth/clerk.py`. Application code depends on the provider-agnostic `CurrentUser` abstraction instead of Clerk SDK types.
+
+### Required Clerk configuration
+
+Set these values in `apps/api/.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `CLERK_SECRET_KEY` | Clerk secret key used for server-side token verification |
+| `CLERK_JWT_KEY` | Optional PEM public key for networkless JWT verification |
+| `CLERK_AUTHORIZED_PARTIES` | Comma-separated frontend origins allowed in the `azp` claim (default: `http://localhost:3002`) |
+
+Never commit real Clerk secrets. Use `.env.example` as the template.
+
+### Authenticated requests
+
+Send a Clerk session token on each protected request:
+
+```http
+Authorization: Bearer <clerk-session-token>
+```
+
+The API verifies the token server-side, maps the Clerk subject (`sub`) to `users.external_auth_id`, and resolves or creates the local user record.
+
+### Identity endpoint
+
+```http
+GET /api/auth/me
+```
+
+Returns the authenticated local user. Missing or invalid authentication returns `401 Unauthorized`.
+
+### Ownership semantics
+
+Trip-scoped routes use `get_owned_trip` to ensure `trip.user_id == current_user.id`.
+
+- Missing/invalid authentication → `401`
+- Authenticated but trip belongs to another user → `403 Forbidden`
+- Authenticated but trip does not exist → `404 Not Found`
+
+A protected ownership probe is available for tests:
+
+```http
+GET /api/trips/{trip_id}/ownership
+```
+
 ## Database
 
 ### Start PostgreSQL locally
