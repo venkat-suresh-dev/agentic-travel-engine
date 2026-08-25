@@ -38,6 +38,7 @@ from app.agent.state import (
     attraction_search_from_state,
     budget_result_from_state,
     clarification_from_state,
+    critic_result_from_state,
     currency_conversion_from_state,
     currency_metadata_from_state,
     distance_matrix_from_state,
@@ -59,6 +60,7 @@ from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 from app.itinerary.composer.base import ItineraryComposer
 from app.itinerary.composer.fake import FakeItineraryComposer
+from app.itinerary.critic.schemas import CriticResult
 from app.itinerary.schemas import ItineraryBuildResult
 from app.llm.base import LLMAdapter
 from app.tools.attractions import AttractionTool
@@ -95,6 +97,8 @@ class TripPlannerRunResult:
     currency_tool_metadata: CurrencyToolMetadata | None
     budget_result: BudgetResult | None
     itinerary_build_result: ItineraryBuildResult | None
+    critic_result: CriticResult | None
+    planning_failed: bool
     aggregate_run_status: AggregateRunStatus | None
     tool_orchestration_summary: ToolOrchestrationSummary | None
     state: AgentState
@@ -204,6 +208,8 @@ class TripPlannerAgentService:
             currency_tool_metadata=currency_metadata_from_state(state),
             budget_result=budget_result_from_state(state),
             itinerary_build_result=itinerary_build_result_from_state(state),
+            critic_result=critic_result_from_state(state),
+            planning_failed=bool(state.get("planning_failed")),
             aggregate_run_status=aggregate_run_status_from_state(state),
             tool_orchestration_summary=summary,
             state=state,

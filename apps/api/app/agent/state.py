@@ -24,6 +24,7 @@ from app.budget.schemas import BudgetResult
 from app.domain.trip_request import ClarificationRequest, TripRequest, ValidationResult
 
 if TYPE_CHECKING:
+    from app.itinerary.critic.schemas import CriticIssue, CriticResult
     from app.itinerary.schemas import (
         Itinerary,
         ItineraryBuildResult,
@@ -82,9 +83,15 @@ class AgentState(TypedDict, total=False):
     retrieved_context_formatted: str | None
     budget_result: dict[str, object] | None
     itinerary: dict[str, object] | None
+    itinerary_draft: dict[str, object] | None
     itinerary_candidate: dict[str, object] | None
     itinerary_validation: dict[str, object] | None
     itinerary_build_success: bool | None
+    itinerary_attempt: int | None
+    critic_result: dict[str, object] | None
+    critic_issues: list[dict[str, object]] | None
+    planning_failed: bool | None
+    planning_failure: dict[str, object] | None
     status: str
 
 
@@ -251,6 +258,15 @@ def itinerary_from_state(state: AgentState) -> Itinerary | None:
     return Itinerary.model_validate(raw)
 
 
+def itinerary_draft_from_state(state: AgentState) -> Itinerary | None:
+    from app.itinerary.schemas import Itinerary
+
+    raw = state.get("itinerary_draft")
+    if raw is None:
+        return None
+    return Itinerary.model_validate(raw)
+
+
 def itinerary_candidate_from_state(
     state: AgentState,
 ) -> ItinerarySelectionCandidate | None:
@@ -276,10 +292,29 @@ def itinerary_validation_from_state(
 def itinerary_build_result_from_state(state: AgentState) -> ItineraryBuildResult:
     from app.itinerary.schemas import ItineraryBuildResult, ItineraryValidationResult
 
+    approved = itinerary_from_state(state)
     return ItineraryBuildResult(
-        success=bool(state.get("itinerary_build_success")),
-        itinerary=itinerary_from_state(state),
+        success=bool(state.get("itinerary_build_success")) and approved is not None,
+        itinerary=approved,
         candidate=itinerary_candidate_from_state(state),
         validation=itinerary_validation_from_state(state)
         or ItineraryValidationResult(is_valid=False),
     )
+
+
+def critic_result_from_state(state: AgentState) -> CriticResult | None:
+    from app.itinerary.critic.schemas import CriticResult
+
+    raw = state.get("critic_result")
+    if raw is None:
+        return None
+    return CriticResult.model_validate(raw)
+
+
+def critic_issues_from_state(state: AgentState) -> list[CriticIssue]:
+    from app.itinerary.critic.schemas import CriticIssue
+
+    raw = state.get("critic_issues")
+    if raw is None:
+        return []
+    return [CriticIssue.model_validate(item) for item in raw]

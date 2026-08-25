@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pydantic import BaseModel, ConfigDict
+
 from app.itinerary.assumptions import SchedulingAssumptions
 from app.itinerary.catalog import build_grounded_catalog
 from app.itinerary.composer.base import ItineraryComposer
@@ -9,11 +11,25 @@ from app.itinerary.composer.fake import FakeItineraryComposer
 from app.itinerary.context import ItineraryBuildContext
 from app.itinerary.materializer import materialize_itinerary
 from app.itinerary.schemas import (
+    Itinerary,
     ItineraryBuildResult,
+    ItinerarySelectionCandidate,
     ItineraryValidationIssue,
     ItineraryValidationResult,
 )
 from app.itinerary.validator import validate_candidate, validate_itinerary
+
+
+class ItineraryDraftResult(BaseModel):
+    """Compose and materialize an itinerary draft without critic approval."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    success: bool
+    itinerary: Itinerary | None = None
+    candidate: ItinerarySelectionCandidate | None = None
+    composer_provider: str | None = None
+    error_message: str | None = None
 
 
 class ItineraryBuilder:
@@ -28,9 +44,9 @@ class ItineraryBuilder:
         self._composer = composer or FakeItineraryComposer()
         self._assumptions = assumptions or SchedulingAssumptions()
 
-    def build_from_context(
+    def build_draft_from_context(
         self, context: ItineraryBuildContext
-    ) -> ItineraryBuildResult:
+    ) -> ItineraryDraftResult:
         catalog = build_grounded_catalog(
             context,
             indoor_types=self._assumptions.indoor_attraction_types,
@@ -38,26 +54,19 @@ class ItineraryBuilder:
         try:
             candidate = self._composer.compose(context=context, catalog=catalog)
         except ValueError as exc:
-            return ItineraryBuildResult(
+            return ItineraryDraftResult(
                 success=False,
-                validation=ItineraryValidationResult(
-                    is_valid=False,
-                    issues=[
-                        ItineraryValidationIssue(
-                            code="composition_failed",
-                            message=str(exc),
-                        )
-                    ],
-                ),
+                error_message=str(exc),
+                composer_provider=type(self._composer).__name__,
             )
+
         candidate_validation = validate_candidate(
             candidate, context=context, catalog=catalog
         )
         if not candidate_validation.is_valid:
-            return ItineraryBuildResult(
-                success=False,
+            return ItineraryDraftResult(
+                success=True,
                 candidate=candidate,
-                validation=candidate_validation,
                 composer_provider=type(self._composer).__name__,
             )
 
@@ -67,23 +76,71 @@ class ItineraryBuilder:
             catalog=catalog,
             assumptions=self._assumptions,
         )
+        return ItineraryDraftResult(
+            success=True,
+            itinerary=itinerary,
+            candidate=candidate,
+            composer_provider=type(self._composer).__name__,
+        )
+
+    def build_from_context(
+        self, context: ItineraryBuildContext
+    ) -> ItineraryBuildResult:
+        draft = self.build_draft_from_context(context)
+        if not draft.success or draft.candidate is None:
+            return ItineraryBuildResult(
+                success=False,
+                validation=ItineraryValidationResult(
+                    is_valid=False,
+                    issues=[
+                        ItineraryValidationIssue(
+                            code="composition_failed",
+                            message=draft.error_message or "draft build failed",
+                        )
+                    ],
+                ),
+            )
+
+        catalog = build_grounded_catalog(
+            context,
+            indoor_types=self._assumptions.indoor_attraction_types,
+        )
+        candidate_validation = validate_candidate(
+            draft.candidate, context=context, catalog=catalog
+        )
+        if not candidate_validation.is_valid:
+            return ItineraryBuildResult(
+                success=False,
+                candidate=draft.candidate,
+                validation=candidate_validation,
+                composer_provider=draft.composer_provider,
+            )
+
+        if draft.itinerary is None:
+            return ItineraryBuildResult(
+                success=False,
+                candidate=draft.candidate,
+                validation=candidate_validation,
+                composer_provider=draft.composer_provider,
+            )
+
         itinerary_validation = validate_itinerary(
-            itinerary,
+            draft.itinerary,
             context=context,
             catalog=catalog,
         )
         if not itinerary_validation.is_valid:
             return ItineraryBuildResult(
                 success=False,
-                candidate=candidate,
+                candidate=draft.candidate,
                 validation=itinerary_validation,
-                composer_provider=type(self._composer).__name__,
+                composer_provider=draft.composer_provider,
             )
 
         return ItineraryBuildResult(
             success=True,
-            itinerary=itinerary,
-            candidate=candidate,
+            itinerary=draft.itinerary,
+            candidate=draft.candidate,
             validation=ItineraryValidationResult(is_valid=True),
-            composer_provider=type(self._composer).__name__,
+            composer_provider=draft.composer_provider,
         )

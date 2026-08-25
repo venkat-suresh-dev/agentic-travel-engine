@@ -54,11 +54,16 @@ def test_complete_request_produces_validated_itinerary(
     result = service.start(COMPLETE_REQUEST, thread_id="itinerary-graph-complete")
 
     assert result.status == GraphStatus.COMPLETE
+    assert result.planning_failed is False
+    assert result.critic_result is not None
+    assert result.critic_result.valid is True
     assert result.itinerary_build_result is not None
     assert result.itinerary_build_result.success is True
     assert result.itinerary_build_result.itinerary is not None
     assert len(result.itinerary_build_result.itinerary.days) == 5
     assert result.itinerary_build_result.validation.is_valid is True
+    assert result.state.get("itinerary") is not None
+    assert result.state.get("itinerary_draft") is not None
 
 
 def test_incomplete_request_does_not_generate_itinerary(

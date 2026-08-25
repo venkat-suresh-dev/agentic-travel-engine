@@ -19,8 +19,10 @@ from app.agent.nodes.ask_user import ask_user
 from app.agent.nodes.build_itinerary import build_build_itinerary_node
 from app.agent.nodes.compute_budget import build_compute_budget_node
 from app.agent.nodes.convert_currency import build_convert_currency_node
+from app.agent.nodes.critic_validate import build_critic_validate_node
 from app.agent.nodes.extract_requirements import build_extract_requirements_node
 from app.agent.nodes.fetch_weather import build_fetch_weather_node
+from app.agent.nodes.finalize_failure import build_finalize_failure_node
 from app.agent.nodes.finalize_run import build_finalize_run_node
 from app.agent.nodes.get_distance_matrix import build_get_distance_matrix_node
 from app.agent.nodes.retrieve_context import build_retrieve_context_node
@@ -31,7 +33,11 @@ from app.agent.nodes.search_restaurants import build_search_restaurants_node
 from app.agent.nodes.validate_requirements import validate_requirements
 from app.agent.orchestration.concurrency import ToolConcurrencyLimiter
 from app.agent.orchestration.fan_out import INDEPENDENT_TOOL_NODE_NAMES
-from app.agent.routing import route_after_retrieve_context, route_after_validation
+from app.agent.routing import (
+    route_after_critic,
+    route_after_retrieve_context,
+    route_after_validation,
+)
 from app.agent.state import AgentInput, AgentState
 from app.core.config import Settings, settings
 from app.itinerary.composer.base import ItineraryComposer
@@ -141,7 +147,9 @@ def build_trip_planner_graph(
         "build_itinerary",
         cast(Any, build_build_itinerary_node(composer=composer)),
     )
+    builder.add_node("critic_validate", cast(Any, build_critic_validate_node()))
     builder.add_node("finalize_run", cast(Any, build_finalize_run_node()))
+    builder.add_node("finalize_failure", cast(Any, build_finalize_failure_node()))
 
     builder.add_edge(START, "extract_requirements")
     builder.add_edge("extract_requirements", "validate_requirements")
@@ -163,8 +171,14 @@ def build_trip_planner_graph(
     builder.add_edge("aggregate_independent_tools", "convert_currency")
     builder.add_edge("convert_currency", "compute_budget")
     builder.add_edge("compute_budget", "build_itinerary")
-    builder.add_edge("build_itinerary", "finalize_run")
+    builder.add_edge("build_itinerary", "critic_validate")
+    builder.add_conditional_edges(
+        "critic_validate",
+        route_after_critic,
+        ["finalize_run", "build_itinerary", "finalize_failure"],
+    )
     builder.add_edge("finalize_run", END)
+    builder.add_edge("finalize_failure", END)
     return builder
 
 

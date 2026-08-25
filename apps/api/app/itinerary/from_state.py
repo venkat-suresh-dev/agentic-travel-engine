@@ -6,6 +6,7 @@ from app.agent.state import (
     AgentState,
     attraction_search_from_state,
     budget_result_from_state,
+    critic_issues_from_state,
     currency_conversion_from_state,
     distance_matrix_from_state,
     flight_search_from_state,
@@ -14,7 +15,7 @@ from app.agent.state import (
     trip_request_from_state,
     weather_forecast_from_state,
 )
-from app.itinerary.builder import ItineraryBuilder
+from app.itinerary.builder import ItineraryBuilder, ItineraryDraftResult
 from app.itinerary.composer.base import ItineraryComposer
 from app.itinerary.context import ItineraryBuildContext
 from app.itinerary.schemas import (
@@ -49,7 +50,24 @@ def build_itinerary_context_from_state(
         currency_conversion=currency_conversion_from_state(state),
         budget_result=budget_result,
         retrieved_context=retrieved,
+        critic_feedback=critic_issues_from_state(state),
     )
+
+
+def build_itinerary_draft_from_state(
+    state: AgentState,
+    *,
+    builder: ItineraryBuilder | None = None,
+    composer: ItineraryComposer | None = None,
+) -> ItineraryDraftResult:
+    itinerary_builder = builder or ItineraryBuilder(composer=composer)
+    context = build_itinerary_context_from_state(state)
+    if context is None:
+        return ItineraryDraftResult(
+            success=False,
+            error_message="trip request and budget result are required",
+        )
+    return itinerary_builder.build_draft_from_context(context)
 
 
 def build_itinerary_from_state(
@@ -73,18 +91,4 @@ def build_itinerary_from_state(
                 ],
             ),
         )
-    try:
-        return itinerary_builder.build_from_context(context)
-    except ValueError as exc:
-        return ItineraryBuildResult(
-            success=False,
-            validation=ItineraryValidationResult(
-                is_valid=False,
-                issues=[
-                    ItineraryValidationIssue(
-                        code="composition_failed",
-                        message=str(exc),
-                    )
-                ],
-            ),
-        )
+    return itinerary_builder.build_from_context(context)

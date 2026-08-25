@@ -1,4 +1,4 @@
-"""Finalize graph execution after dependency-aware currency conversion."""
+"""Finalize graph execution after critic retries are exhausted."""
 
 from __future__ import annotations
 
@@ -9,13 +9,11 @@ from app.agent.orchestration.aggregate import (
     build_orchestration_summary,
     compute_aggregate_run_status,
 )
-from app.agent.state import AgentState, GraphStatus
+from app.agent.state import AgentState, GraphStatus, critic_result_from_state
 
 
-def build_finalize_run_node() -> Callable[[AgentState], AgentState]:
-    """Create a final node that sets graph completion and orchestration summary."""
-
-    def finalize_run(state: AgentState) -> AgentState:
+def build_finalize_failure_node() -> Callable[[AgentState], AgentState]:
+    def finalize_failure(state: AgentState) -> AgentState:
         aggregate_status = compute_aggregate_run_status(
             state,
             include_currency=True,
@@ -29,11 +27,20 @@ def build_finalize_run_node() -> Callable[[AgentState], AgentState]:
             aggregate_run_status=aggregate_status,
             started_at=started_at,
         )
+        critic = critic_result_from_state(state)
         return {
             "aggregate_run_status": aggregate_status.value,
             "tool_orchestration_summary": summary.model_dump(mode="json"),
             "status": GraphStatus.COMPLETE.value,
-            "planning_failed": False,
+            "planning_failed": True,
+            "itinerary": None,
+            "itinerary_build_success": False,
+            "planning_failure": {
+                "message": "itinerary critic retries exhausted",
+                "attempts": state.get("itinerary_attempt"),
+                "critic_valid": critic.valid if critic is not None else False,
+                "issue_count": len(critic.issues) if critic is not None else 0,
+            },
         }
 
-    return finalize_run
+    return finalize_failure

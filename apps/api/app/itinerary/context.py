@@ -8,10 +8,11 @@ from mcp_tools.flights.schemas import FlightSearchResult
 from mcp_tools.hotels.schemas import HotelSearchResult
 from mcp_tools.places.schemas import AttractionSearchResult, RestaurantSearchResult
 from mcp_tools.weather.schemas import WeatherForecastResult
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.budget.schemas import BudgetResult
 from app.domain.trip_request import TripRequest
+from app.itinerary.critic.schemas import CriticIssue
 from app.rag.schemas import RetrievedContext
 
 
@@ -30,3 +31,4 @@ class ItineraryBuildContext(BaseModel):
     currency_conversion: CurrencyConversionResult | None = None
     budget_result: BudgetResult
     retrieved_context: RetrievedContext | None = None
+    critic_feedback: list[CriticIssue] = Field(default_factory=list)
