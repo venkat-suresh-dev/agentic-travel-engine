@@ -130,7 +130,13 @@ def test_at_least_one_meal_per_day() -> None:
     for day in result.itinerary.days:
         assert day.meal is not None
         assert day.meal.item.category.value == "restaurant"
-        assert day.meal.item.source_id in {"places/restaurant-a", "places/restaurant-b"}
+        assert day.meal.item.source_id in {
+            "places/restaurant-a",
+            "places/restaurant-b",
+            "places/restaurant-c",
+            "places/restaurant-d",
+            "places/restaurant-e",
+        }
 
 
 def test_no_invented_restaurants_in_materialized_items() -> None:
@@ -141,7 +147,13 @@ def test_no_invented_restaurants_in_materialized_items() -> None:
     result = builder.build_from_context(example_itinerary_context(duration_days=2))
     assert result.itinerary is not None
 
-    restaurant_ids = {"places/restaurant-a", "places/restaurant-b"}
+    restaurant_ids = {
+        "places/restaurant-a",
+        "places/restaurant-b",
+        "places/restaurant-c",
+        "places/restaurant-d",
+        "places/restaurant-e",
+    }
     for day in result.itinerary.days:
         meal_ids = [
             item.source_id for item in day.items if item.category.value == "restaurant"
@@ -210,6 +222,14 @@ def test_flight_and_hotel_infrastructure_items_present() -> None:
     categories = {item.category.value for item in result.itinerary.infrastructure_items}
     assert "flight" in categories
     assert "hotel" in categories
+    flight = next(
+        item
+        for item in result.itinerary.infrastructure_items
+        if item.category.value == "flight"
+    )
+    assert "→" in flight.title
+    assert flight.description is not None
+    assert "Outbound flight" in flight.description
 
 
 def test_nearby_attractions_grouped_by_proximity() -> None:
@@ -353,3 +373,57 @@ def test_invalid_builder_candidate_is_not_persisted_as_success() -> None:
     assert result.success is False
     assert result.itinerary is None
     assert result.validation.is_valid is False
+
+
+def test_implausible_travel_duration_does_not_create_invalid_leg() -> None:
+    from datetime import date, datetime
+
+    from app.itinerary.materializer import _build_travel_leg
+    from app.itinerary.schemas import ItemCost, ItineraryItem, ItineraryItemCategory
+    from app.itinerary.travel import TravelEstimate
+
+    class HugeTravel(TravelTimeEstimator):
+        def estimate(
+            self,
+            *,
+            origin_lat: float,
+            origin_lng: float,
+            destination_lat: float,
+            destination_lng: float,
+        ) -> TravelEstimate:
+            return TravelEstimate(
+                distance_meters=1_000_000,
+                duration_seconds=50_000,
+                travel_mode="driving",
+                source="test",
+                data_status=PriceDataKind.LIVE,
+            )
+
+    previous = ItineraryItem(
+        item_id="slow-morning",
+        day_number=2,
+        start_time=time(10, 0),
+        end_time=time(10, 45),
+        category=ItineraryItemCategory.FREE_TIME,
+        title="Slow morning",
+        latitude=25.2,
+        longitude=55.2,
+        cost=ItemCost(amount=None, currency="INR", data_kind=PriceDataKind.FREE),
+        source="planner",
+        source_id=None,
+        data_status=PriceDataKind.FREE,
+    )
+    started = datetime.combine(date.today(), time(10, 45))
+    leg, cursor = _build_travel_leg(
+        previous_item=previous,
+        next_lat=25.3,
+        next_lng=55.3,
+        day_number=2,
+        cursor=started,
+        estimator=HugeTravel(None),
+        assumptions=SchedulingAssumptions(),
+        leg_index=0,
+        travel_buffer_minutes=20,
+    )
+    assert leg is None
+    assert cursor > started

@@ -1,0 +1,34 @@
+{
+  "query": {
+    "geosearch": [
+      {
+        "pageid": 18996255,
+        "title": "Burj Khalifa",
+        "lat": 25.1972,
+        "lon": 55.2744,
+        "dist": 1200
+      },
+      {
+        "pageid": 12345,
+        "title": "Dubai Museum",
+        "lat": 25.2632,
+        "lon": 55.2972,
+        "dist": 3500
+      },
+      {
+        "pageid": 99,
+        "title": "Dubai (disambiguation)",
+        "lat": 25.2,
+        "lon": 55.2,
+        "dist": 500
+      },
+      {
+        "pageid": 88,
+        "title": "List of buildings in Dubai",
+        "lat": 25.2,
+        "lon": 55.2,
+        "dist": 600
+      }
+    ]
+  }
+}

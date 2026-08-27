@@ -33,6 +33,12 @@ const ItineraryMapCanvas = dynamic(
   },
 );
 
+export interface MapLeg {
+  id: string;
+  from: [number, number];
+  to: [number, number];
+}
+
 export function extractMapMarkers(
   itinerary: Itinerary,
   dayNumber?: number,
@@ -64,8 +70,25 @@ export function extractMapMarkers(
     if (item.latitude === null || item.longitude === null) {
       continue;
     }
-    if (dayNumber !== undefined && item.day_number !== dayNumber) {
+    if (/check-out/i.test(item.title)) {
       continue;
+    }
+    if (item.category !== "hotel") {
+      if (dayNumber !== undefined && item.day_number !== dayNumber) {
+        continue;
+      }
+    } else if (dayNumber !== undefined) {
+      const dayPoints = markers.filter((marker) => marker.dayNumber === dayNumber);
+      if (dayPoints.length > 0) {
+        const nearby = dayPoints.some((marker) => {
+          const latDelta = Math.abs(marker.latitude - item.latitude!);
+          const lngDelta = Math.abs(marker.longitude - item.longitude!);
+          return latDelta < 0.18 && lngDelta < 0.18;
+        });
+        if (!nearby) {
+          continue;
+        }
+      }
     }
     markers.push({
       id: `infra-${item.item_id}`,
@@ -79,6 +102,33 @@ export function extractMapMarkers(
   }
 
   return markers;
+}
+
+export function extractMapLegs(itinerary: Itinerary, dayNumber: number): MapLeg[] {
+  const day = itinerary.days.find((entry) => entry.day_number === dayNumber);
+  if (!day) {
+    return [];
+  }
+  const itemsById = new Map(day.items.map((item) => [item.item_id, item]));
+  const legs: MapLeg[] = [];
+  for (const leg of day.travel_legs) {
+    const from = itemsById.get(leg.from_item_id);
+    const to = itemsById.get(leg.to_item_id);
+    if (
+      from?.latitude == null ||
+      from.longitude == null ||
+      to?.latitude == null ||
+      to.longitude == null
+    ) {
+      continue;
+    }
+    legs.push({
+      id: leg.leg_id,
+      from: [from.latitude, from.longitude],
+      to: [to.latitude, to.longitude],
+    });
+  }
+  return legs;
 }
 
 interface ItineraryMapProps {
@@ -102,6 +152,10 @@ export function ItineraryMap({
 }: ItineraryMapProps) {
   const markers = useMemo(
     () => extractMapMarkers(itinerary, selectedDay),
+    [itinerary, selectedDay],
+  );
+  const legs = useMemo(
+    () => extractMapLegs(itinerary, selectedDay),
     [itinerary, selectedDay],
   );
 
@@ -128,22 +182,11 @@ export function ItineraryMap({
 
   return (
     <section
-      className={cn(
-        "overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]",
-        className,
-      )}
+      className={cn("min-w-0", className)}
       aria-label="Itinerary map"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-            Map
-          </p>
-          <p className="text-xs text-[var(--foreground-secondary)]">
-            Day {selectedDay} · {markers.length} location
-            {markers.length === 1 ? "" : "s"}
-          </p>
-        </div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-[var(--foreground-muted)]">Map</p>
         {onToggleCollapsed ? (
           <Button
             type="button"
@@ -156,9 +199,10 @@ export function ItineraryMap({
           </Button>
         ) : null}
       </div>
-      <div className="h-[180px] lg:h-[200px]">
+      <div className="h-[200px] overflow-hidden rounded-xl bg-[var(--surface)] shadow-[var(--shadow-soft)] lg:h-[240px]">
         <ItineraryMapCanvas
           markers={markers}
+          legs={legs}
           selectedItemId={selectedItemId}
           onSelectItem={onSelectItem}
         />

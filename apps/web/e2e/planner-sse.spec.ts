@@ -86,5 +86,10 @@ test("shows trace drawer and map on completed run", async ({ page }) => {
   await page.goto("/planner/run-complete-1");
   await expect(page.getByRole("heading", { level: 1, name: "Dubai" })).toBeVisible();
   await expect(page.getByRole("button", { name: /View execution|Agent run/i })).toBeVisible();
+  await page.getByRole("button", { name: /View execution|Agent run/i }).click();
+  const trace = page.getByRole("dialog");
+  await expect(trace.getByText("Live · serpapi")).toBeVisible();
+  await expect(trace.getByText("Sandbox · stayingapi")).toBeVisible();
+  await expect(trace.getByText("Unavailable")).toHaveCount(0);
   await expect(page.getByLabel("Itinerary map")).toBeVisible();
 });

@@ -69,5 +69,33 @@ class FakeHotelProvider:
                 total_price=total,
                 check_in=request.check_in,
                 check_out=request.check_out,
-            )
+            ),
+            HotelOffer(
+                hotel_id="fake-hotel-2",
+                name="Fake Creek Hotel",
+                location=request.location,
+                address="Al Fahidi, Dubai, AE",
+                latitude=25.2630,
+                longitude=55.2970,
+                room_options=[
+                    HotelRoomOption(
+                        room_type="Standard Room",
+                        description="Standard room near the creek",
+                        nightly_price=MoneyAmount(
+                            amount=Decimal("620.00"), currency=request.currency
+                        ),
+                        total_price=MoneyAmount(
+                            amount=Decimal("3100.00"), currency=request.currency
+                        ),
+                    )
+                ],
+                nightly_price=MoneyAmount(
+                    amount=Decimal("620.00"), currency=request.currency
+                ),
+                total_price=MoneyAmount(
+                    amount=Decimal("3100.00"), currency=request.currency
+                ),
+                check_in=request.check_in,
+                check_out=request.check_out,
+            ),
         ]

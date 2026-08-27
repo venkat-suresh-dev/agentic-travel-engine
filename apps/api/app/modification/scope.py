@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.itinerary.schemas import Itinerary, ItineraryItemCategory
+from app.itinerary.schemas import Itinerary, ItineraryDay, ItineraryItemCategory
 from app.modification.schemas import (
     ModificationIntent,
     ModificationScope,
@@ -39,13 +39,25 @@ def resolve_modification_scope(
         ModificationIntent.CHANGE_RESTAURANT,
         ModificationIntent.CHANGE_ACTIVITY,
         ModificationIntent.REPLACE_ITEM,
+        ModificationIntent.CHANGE_PREFERENCE,
     }:
         affected_days = _infer_days_from_message(itinerary, request)
+
+    if not affected_days and request.intent == ModificationIntent.REDUCE_COST:
+        affected_days = [day.day_number for day in itinerary.days]
+    if not affected_days and request.intent == ModificationIntent.CHANGE_PREFERENCE:
+        affected_days = [day.day_number for day in itinerary.days]
+    if not affected_days and request.intent in {
+        ModificationIntent.CHANGE_PACE,
+        ModificationIntent.MODIFY_DAY,
+    }:
+        busiest = _busiest_day(itinerary)
+        affected_days = [busiest] if busiest is not None else []
 
     if not affected_item_ids and affected_days:
         affected_item_ids = _items_for_days(itinerary, affected_days, request.intent)
 
-    affected_trip_fields = _affected_trip_fields(request.intent)
+    affected_trip_fields = _affected_trip_fields(request)
     requires_tool_refresh = _requires_tool_refresh(request.intent)
     requires_budget_recompute = _requires_budget_recompute(request.intent)
     requires_critic = True
@@ -119,6 +131,10 @@ def _infer_days_from_message(
     for day in itinerary.days:
         if f"day {day.day_number}" in lowered:
             return [day.day_number]
+    if itinerary.days and any(
+        token in lowered for token in ("last day", "final day", "departure day")
+    ):
+        return [itinerary.days[-1].day_number]
     return []
 
 
@@ -143,7 +159,10 @@ def _items_for_days(
                 ModificationIntent.REPLACE_ITEM,
             }:
                 item_ids.append(item.item_id)
-            elif intent == ModificationIntent.CHANGE_PACE:
+            elif intent in {
+                ModificationIntent.CHANGE_PACE,
+                ModificationIntent.CHANGE_PREFERENCE,
+            }:
                 if item.category == ItineraryItemCategory.ATTRACTION:
                     item_ids.append(item.item_id)
             else:
@@ -151,10 +170,13 @@ def _items_for_days(
     return item_ids
 
 
-def _affected_trip_fields(intent: ModificationIntent) -> list[str]:
+def _affected_trip_fields(request: TripModificationRequest) -> list[str]:
+    intent = request.intent
     if intent == ModificationIntent.MODIFY_TRIP_REQUIREMENT:
         return ["start_date", "duration_days", "budget_amount", "destination"]
     if intent == ModificationIntent.CHANGE_HOTEL:
+        return ["hotel"]
+    if intent == ModificationIntent.REDUCE_COST and not request.target_days:
         return ["hotel"]
     return []
 
@@ -180,4 +202,19 @@ def _requires_budget_recompute(intent: ModificationIntent) -> bool:
         ModificationIntent.MODIFY_TRIP_REQUIREMENT,
         ModificationIntent.CHANGE_PACE,
         ModificationIntent.MODIFY_DAY,
+        ModificationIntent.CHANGE_PREFERENCE,
     }
+
+
+def _busiest_day(itinerary: Itinerary) -> int | None:
+    if not itinerary.days:
+        return None
+
+    def score(day: ItineraryDay) -> tuple[int, int]:
+        attractions = sum(
+            1 for item in day.items if item.category == ItineraryItemCategory.ATTRACTION
+        )
+        travel = sum(leg.duration_seconds for leg in day.travel_legs)
+        return (attractions, travel)
+
+    return max(itinerary.days, key=score).day_number

@@ -20,6 +20,7 @@ from app.llm.prompts import (
     MODIFICATION_SYSTEM_PROMPT,
     build_modification_user_prompt,
 )
+from app.modification.extract import extract_modification_from_text
 from app.modification.schemas import (
     ModificationIntent,
     ModificationStatus,
@@ -47,10 +48,9 @@ def build_extract_modification_node(
                 user_prompt=user_prompt,
                 response_model=TripModificationRequest,
             )
-        except (LLMProviderError, LLMStructuredOutputError) as exc:
-            raise RequirementExtractionError(str(exc)) from exc
-
-        modification = result.data.model_copy(update={"raw_message": source_text})
+            modification = result.data.model_copy(update={"raw_message": source_text})
+        except (LLMProviderError, LLMStructuredOutputError):
+            modification = extract_modification_from_text(source_text)
         messages = list(state.get("messages", []))
         if source_text:
             messages.append({"role": "user_modification", "content": source_text})
@@ -88,8 +88,20 @@ def build_extract_modification_node(
 def _preference_updates(source_text: str) -> list[str]:
     preferences: list[str] = []
     lowered = source_text.lower()
-    if "relaxed pace" in lowered or "relaxed" in lowered:
+    if (
+        "relaxed pace" in lowered
+        or "relaxed" in lowered
+        or "less rushed" in lowered
+        or "slower" in lowered
+        or "reduce travel" in lowered
+    ):
         preferences.append("relaxed pace")
     if "vegetarian" in lowered:
         preferences.append("vegetarian food")
+    if "culture" in lowered:
+        preferences.append("more culture")
+    if "less shopping" in lowered:
+        preferences.append("less shopping")
+    if "slow morning" in lowered or "keep mornings slow" in lowered:
+        preferences.append("slow mornings")
     return preferences

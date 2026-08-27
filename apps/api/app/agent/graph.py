@@ -236,7 +236,11 @@ def build_trip_planner_graph(
     builder.add_conditional_edges(
         "apply_modification",
         route_after_apply_modification,
-        ["recompute_modification_budget", "critic_validate"],
+        [
+            "recompute_modification_budget",
+            "critic_validate",
+            "finalize_modification_failure",
+        ],
     )
     builder.add_edge("recompute_modification_budget", "critic_validate")
     builder.add_edge("compute_budget", "build_itinerary")

@@ -15,6 +15,9 @@ interface ProvenanceBadgeProps {
   source: string;
   sourceId?: string | null;
   compact?: boolean;
+  /** Minimal: single quiet label, details in popover only. */
+  minimal?: boolean;
+  detail?: string;
   className?: string;
 }
 
@@ -23,10 +26,14 @@ export function ProvenanceBadge({
   source,
   sourceId,
   compact = false,
+  minimal = false,
+  detail,
   className,
 }: ProvenanceBadgeProps) {
   const meta = DATA_KIND_LABELS[dataKind];
   const provider = source.replace(/_/g, " ");
+  const isSandbox = source.toLowerCase().includes("sandbox");
+  const displayLabel = isSandbox ? "Sandbox" : meta.label;
 
   return (
     <Popover>
@@ -34,20 +41,41 @@ export function ProvenanceBadge({
         <button
           type="button"
           className={cn(
-            "inline-flex items-center gap-1 rounded-full text-left transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+            "inline-flex items-center gap-1 rounded-sm text-left transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
             className,
           )}
-          aria-label={`Data provenance: ${meta.label} from ${provider}`}
+          aria-label={`Data provenance: ${displayLabel}${detail ? ` · ${detail}` : ""}`}
         >
-          <Badge variant={meta.tone} className={compact ? "text-[10px] px-1.5 py-0" : undefined}>
-            {meta.label}
-          </Badge>
-          {!compact ? (
+          {minimal ? (
+            <span className="text-xs text-[var(--foreground-muted)]">
+              {displayLabel}
+              {detail ? (
+                <>
+                  <span className="mx-1 text-[var(--border-strong)]">·</span>
+                  {detail}
+                </>
+              ) : null}
+            </span>
+          ) : (
             <>
-              <span className="text-[11px] text-[var(--foreground-muted)]">{provider}</span>
-              <Info className="h-3 w-3 text-[var(--foreground-muted)]" aria-hidden />
+              <Badge
+                variant={meta.tone}
+                className={
+                  compact
+                    ? "rounded-sm bg-transparent px-0 py-0 text-[11px] uppercase tracking-[0.12em]"
+                    : undefined
+                }
+              >
+                {displayLabel}
+              </Badge>
+              {!compact ? (
+                <>
+                  <span className="text-[11px] text-[var(--foreground-muted)]">{provider}</span>
+                  <Info className="h-3 w-3 text-[var(--foreground-muted)]" aria-hidden />
+                </>
+              ) : null}
             </>
-          ) : null}
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72">

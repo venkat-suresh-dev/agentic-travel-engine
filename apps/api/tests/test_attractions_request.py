@@ -24,7 +24,9 @@ def test_build_attraction_search_request_from_trip_request() -> None:
     request = build_attraction_search_request(trip_request, FakeLocationResolver())
     assert isinstance(request, AttractionSearchRequest)
     assert request.location.name == "Dubai"
-    assert request.categories == [AttractionCategory.TOURIST_ATTRACTION]
+    assert AttractionCategory.TOURIST_ATTRACTION in request.categories
+    assert request.max_results >= 20
+    assert request.radius_meters >= 8000
 
 
 def test_build_attraction_search_request_requires_destination() -> None:

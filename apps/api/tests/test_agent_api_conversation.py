@@ -302,7 +302,7 @@ async def test_completed_plan_modification_returns_operation_metadata(
 
 
 @pytest.mark.asyncio
-async def test_modification_extraction_failure_preserves_itinerary(
+async def test_modification_extraction_falls_back_when_llm_unavailable(
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
     fake_airport_resolver: FakeAirportCodeResolver,
@@ -356,7 +356,7 @@ async def test_modification_extraction_failure_preserves_itinerary(
         )
         assert initial.status_code == 201
         run_id = initial.json()["run_id"]
-        before_itinerary = initial.json()["itinerary"]
+        before_days = initial.json()["itinerary"]["days"]
 
         resumed = await client.post(
             f"/api/agent/runs/{run_id}/messages",
@@ -365,10 +365,14 @@ async def test_modification_extraction_failure_preserves_itinerary(
         )
 
     body = resumed.json()
-    assert body["status"] == "failed"
+    assert resumed.status_code == 200
+    assert body["status"] == "complete"
     assert body["operation"]["operation_type"] == "modification"
-    assert body["itinerary"] == before_itinerary
-    assert body["error"] == "Requirement extraction failed. Please try again."
+    assert body["itinerary"]["days"][1] != before_days[1]
+    assert any(
+        item["category"] == "free_time"
+        for item in body["itinerary"]["days"][1]["items"]
+    )
 
     app.dependency_overrides.clear()
 

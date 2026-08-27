@@ -22,6 +22,7 @@ class PriceDataKind(StrEnum):
     CACHED = "cached"
     ESTIMATED = "estimated"
     FREE = "free"
+    REFERENCE = "reference"
     UNAVAILABLE = "unavailable"
 
 

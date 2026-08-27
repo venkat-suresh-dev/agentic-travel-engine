@@ -3,10 +3,10 @@
 :root {
   color-scheme: light;
   --background: #f4efe6;
-  --foreground: #17130f;
-  --foreground-secondary: #5f574f;
-  --foreground-muted: #8a8178;
-  --surface: #fbf8f3;
+  --foreground: #1f2421;
+  --foreground-secondary: #5c5650;
+  --foreground-muted: #8b8173;
+  --surface: #fbf8f2;
   --surface-elevated: #fffdf9;
   --surface-muted: #efe8dd;
   --surface-hover: #f0e9df;
@@ -59,11 +59,15 @@ body {
     linear-gradient(180deg, #f7f2ea 0%, var(--background) 40%, #efe8dd 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.011em;
   min-height: 100%;
 }
 
 .font-display {
   font-family: var(--font-fraunces), serif;
+  letter-spacing: -0.03em;
+  font-optical-sizing: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -122,9 +126,39 @@ body {
   background-color: rgba(95, 87, 79, 0.3);
 }
 
-.auth-page {
-  width: 100%;
-  color-scheme: light;
+.planner-account .cl-userButton-root,
+.planner-account .cl-userButtonBox,
+.planner-account .cl-avatarBox,
+.planner-account .cl-userButtonTrigger {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.planner-account .cl-userButtonTrigger {
+  border-radius: 9999px;
+}
+
+.planner-account .cl-avatarBox,
+.planner-account .cl-userButtonAvatarBox,
+.planner-account .cl-userButtonAvatarImage,
+.planner-account .cl-internal-1tp9ipr {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  box-shadow: none !important;
+}
+
+/* Suppress Clerk purple defaults on initials fallback */
+.planner-account [class*="cl-"][class*="avatar"],
+.planner-account [class*="cl-"][class*="Avatar"] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.planner-account .cl-userButtonPopoverCard {
+  background-color: var(--surface-elevated) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  border-radius: 0.75rem !important;
 }
 
 .auth-clerk-slot {

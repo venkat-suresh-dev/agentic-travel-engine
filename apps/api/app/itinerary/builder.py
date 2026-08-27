@@ -5,11 +5,13 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from app.itinerary.assumptions import SchedulingAssumptions
-from app.itinerary.catalog import build_grounded_catalog
+from app.itinerary.catalog import GroundedCatalog, build_grounded_catalog
 from app.itinerary.composer.base import ItineraryComposer
 from app.itinerary.composer.fake import FakeItineraryComposer
 from app.itinerary.context import ItineraryBuildContext
+from app.itinerary.diversity.themes import DayTheme
 from app.itinerary.materializer import materialize_itinerary
+from app.itinerary.quality import filter_catalog_quality
 from app.itinerary.schemas import (
     Itinerary,
     ItineraryBuildResult,
@@ -51,6 +53,7 @@ class ItineraryBuilder:
             context,
             indoor_types=self._assumptions.indoor_attraction_types,
         )
+        catalog, _quality_stats = filter_catalog_quality(catalog)
         try:
             candidate = self._composer.compose(context=context, catalog=catalog)
         except ValueError as exc:
@@ -75,6 +78,7 @@ class ItineraryBuilder:
             context=context,
             catalog=catalog,
             assumptions=self._assumptions,
+            day_themes=_composer_themes(self._composer, candidate, catalog),
         )
         return ItineraryDraftResult(
             success=True,
@@ -105,6 +109,7 @@ class ItineraryBuilder:
             context,
             indoor_types=self._assumptions.indoor_attraction_types,
         )
+        catalog, _quality_stats = filter_catalog_quality(catalog)
         candidate_validation = validate_candidate(
             draft.candidate, context=context, catalog=catalog
         )
@@ -144,3 +149,23 @@ class ItineraryBuilder:
             validation=ItineraryValidationResult(is_valid=True),
             composer_provider=draft.composer_provider,
         )
+
+
+def _composer_themes(
+    composer: ItineraryComposer,
+    candidate: ItinerarySelectionCandidate,
+    catalog: GroundedCatalog,
+) -> dict[int, DayTheme]:
+    last_themes = getattr(composer, "last_themes", None)
+    if isinstance(last_themes, dict) and last_themes:
+        return last_themes
+    from app.itinerary.diversity.themes import derive_day_theme
+
+    themes: dict[int, DayTheme] = {}
+    for day in candidate.days:
+        themes[day.day_number] = derive_day_theme(
+            day.attraction_source_ids,
+            catalog,
+            used_titles={item.title for item in themes.values()},
+        )
+    return themes

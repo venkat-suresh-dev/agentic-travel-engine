@@ -26,6 +26,7 @@ def test_build_restaurant_search_request_from_trip_request() -> None:
     assert request.location.name == "Dubai"
     assert request.location.latitude == pytest.approx(25.2048)
     assert request.location.longitude == pytest.approx(55.2708)
+    assert request.max_results >= 15
 
 
 def test_build_restaurant_search_request_requires_destination() -> None:

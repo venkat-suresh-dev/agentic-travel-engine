@@ -177,13 +177,16 @@ def test_parallel_execution_preserves_typed_state_and_metadata(
     assert result.hotel_tool_metadata is not None
     assert result.restaurant_tool_metadata is not None
     assert result.attraction_tool_metadata is not None
-    assert result.currency_tool_metadata is not None
+    # Same-currency INR amounts skip FX; metadata remains unset when skipped.
+    assert result.currency_conversion is None
+    assert result.currency_tool_metadata is None
     assert result.tool_orchestration_summary is not None
     assert result.tool_orchestration_summary.run_id == "state-integrity"
     assert len(result.tool_orchestration_summary.tool_records) >= 6
     tool_names = [
         record.tool_name for record in result.tool_orchestration_summary.tool_records
     ]
+    assert "convert_currency" in tool_names
     assert len(tool_names) == len(set(tool_names))
 
 

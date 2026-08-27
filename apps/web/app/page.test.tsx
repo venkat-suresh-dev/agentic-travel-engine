@@ -7,12 +7,9 @@ describe("Home page", () => {
   it("renders the application foundation heading", () => {
     render(<Home />);
 
-    expect(
-      screen.getByRole("link", { name: /open planner/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /open planner/i })).toHaveAttribute(
-      "href",
-      "/planner",
-    );
+    const plannerLinks = screen.getAllByRole("link", { name: /open planner/i });
+    expect(plannerLinks.length).toBeGreaterThanOrEqual(1);
+    expect(plannerLinks[0]).toHaveAttribute("href", "/planner");
+    expect(screen.getByRole("heading", { name: /plan the trip/i })).toBeInTheDocument();
   });
 });

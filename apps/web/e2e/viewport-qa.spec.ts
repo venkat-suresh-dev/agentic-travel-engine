@@ -57,19 +57,26 @@ test.describe("Phase 7B above-the-fold QA", () => {
           const rect = el.getBoundingClientRect();
           return rect.top >= 0 && rect.bottom <= viewportHeight + 1;
         };
+        const isPartiallyInViewport = (el: Element | null) => {
+          if (!el) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.top < viewportHeight && rect.bottom > 0 && rect.top < viewportHeight * 0.92;
+        };
 
         const destination = document.querySelector("h1");
         const budget =
           document.querySelector('[aria-label="Budget summary"]') ??
           document.querySelector("#budget-heading-compact");
+        const logistics = document.querySelector('[aria-label="Trip essentials"]');
         const dayTab = document.querySelector('[role="tab"][aria-selected="true"]');
-        const activity = document.querySelector("ol li");
+        const activity = document.querySelector('[role="tabpanel"] ol li');
 
         return {
           destination: isInViewport(destination),
           budget: isInViewport(budget),
-          dayTab: isInViewport(dayTab),
-          activity: isInViewport(activity),
+          logistics: isInViewport(logistics),
+          dayTab: isPartiallyInViewport(dayTab),
+          activity: isPartiallyInViewport(activity),
           scrollWidth: document.documentElement.scrollWidth,
           clientWidth: document.documentElement.clientWidth,
         };
@@ -78,8 +85,12 @@ test.describe("Phase 7B above-the-fold QA", () => {
       expect(checks.scrollWidth).toBeLessThanOrEqual(checks.clientWidth + 1);
       expect(checks.destination).toBe(true);
       expect(checks.budget).toBe(true);
+      expect(checks.logistics).toBe(true);
       expect(checks.dayTab).toBe(true);
-      expect(checks.activity).toBe(true);
+      // Wide desktop: first activity should peek above the composer dock.
+      if (viewport.width >= 1440 && viewport.height >= 900) {
+        expect(checks.activity).toBe(true);
+      }
     });
   }
 });

@@ -17,10 +17,10 @@ DEFAULT_SERPAPI_BASE_URL = "https://serpapi.com/search"
 DEFAULT_SERPAPI_FLIGHTS_ENGINE = "google_flights"
 
 _CABIN_TO_TRAVEL_CLASS: dict[CabinClass, str] = {
-    CabinClass.ECONOMY: "economy",
-    CabinClass.PREMIUM_ECONOMY: "premium_economy",
-    CabinClass.BUSINESS: "business",
-    CabinClass.FIRST: "first",
+    CabinClass.ECONOMY: "1",
+    CabinClass.PREMIUM_ECONOMY: "2",
+    CabinClass.BUSINESS: "3",
+    CabinClass.FIRST: "4",
 }
 
 

@@ -37,10 +37,10 @@ export function friendlyErrorMessage(error: unknown): string {
     if (error.status >= 500) {
       return "Our servers are temporarily unavailable. Please try again.";
     }
-    return error.detail ?? "Something went wrong. Please try again.";
+    return error.detail ?? "The planner could not complete that request. Try again.";
   }
   if (error instanceof TypeError) {
     return "Unable to reach the planner service. Check your connection.";
   }
-  return "Something went wrong. Please try again.";
+  return "The planner could not complete that request. Try again.";
 }

@@ -16,7 +16,9 @@ ToolExecuteResult = tuple[dict[str, Any], str | None]
 
 
 def _resolve_tool_status(result: dict[str, Any]) -> ToolExecutionStatus:
-    for value in result.values():
+    for key, value in result.items():
+        if key.endswith("_tool_metadata"):
+            continue
         if isinstance(value, dict) and is_tool_result_unavailable(value):
             return ToolExecutionStatus.UNAVAILABLE
     return ToolExecutionStatus.SUCCESS

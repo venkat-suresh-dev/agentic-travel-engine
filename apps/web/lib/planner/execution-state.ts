@@ -20,6 +20,8 @@ export interface ExecutionItem {
   status: ExecutionItemStatus;
   durationMs: number | null;
   errorMessage?: string;
+  dataMode?: string;
+  provider?: string | null;
 }
 
 export interface LiveExecutionState {

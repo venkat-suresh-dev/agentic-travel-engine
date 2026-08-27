@@ -7,7 +7,12 @@ from collections.abc import Callable
 from app.agent.state import AgentState, itinerary_from_state
 from app.itinerary.from_state import build_itinerary_context_from_state
 from app.modification.engine import ModificationEngine
-from app.modification.schemas import ModificationScope, TripModificationRequest
+from app.modification.schemas import (
+    ModificationFailure,
+    ModificationScope,
+    ModificationStatus,
+    TripModificationRequest,
+)
 
 
 def build_apply_modification_node() -> Callable[[AgentState], dict[str, object]]:
@@ -38,6 +43,22 @@ def build_apply_modification_node() -> Callable[[AgentState], dict[str, object]]
             modification=request,
             scope=scope,
         )
+        if not result.success:
+            message = result.error_message or (
+                "The requested change is not feasible with the available "
+                "grounded options."
+            )
+            return {
+                "itinerary_attempt": attempt,
+                "itinerary_build_success": False,
+                "itinerary_draft": None,
+                "modification_status": ModificationStatus.FAILED.value,
+                "modification_failure": ModificationFailure(
+                    message=message,
+                    issues=[message],
+                    preserved_itinerary=True,
+                ).model_dump(mode="json"),
+            }
         return {
             "itinerary_attempt": attempt,
             "itinerary": None,

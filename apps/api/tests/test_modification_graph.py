@@ -96,6 +96,8 @@ def test_completed_plan_modification_updates_only_target_day(
     after = modified.itinerary_build_result.itinerary
     assert after.days[0] == before.days[0]
     assert after.days[2:] == before.days[2:]
+    assert after.days[1] != before.days[1]
+    assert any(item.category.value == "free_time" for item in after.days[1].items)
 
 
 def test_clarification_flow_still_works_for_incomplete_plan(

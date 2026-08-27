@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from mcp_tools.flights.schemas import FlightDataStatus
 from mcp_tools.hotels.schemas import HotelDataStatus
+from mcp_tools.places.reference.schemas import SignificanceTier
 from mcp_tools.places.schemas import (
     AttractionPlace,
     PlacesDataStatus,
@@ -28,6 +29,14 @@ class GroundedAttraction:
     source: str
     data_status: PriceDataKind
     is_indoor: bool
+    significance_tier: SignificanceTier = SignificanceTier.POI
+    quality_score: float | None = None
+    reference_page_id: int | None = None
+    reference_source: str | None = None
+    rating: float | None = None
+    price_level: str | None = None
+    address: str | None = None
+    user_rating_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,14 +47,24 @@ class GroundedRestaurant:
     longitude: float
     source: str
     data_status: PriceDataKind
+    rating: float | None = None
+    price_level: str | None = None
+    primary_type: str | None = None
+    address: str | None = None
+    user_rating_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class GroundedFlight:
     offer_id: str
     title: str
+    carrier: str
+    origin: str
+    destination: str
     departure_at: datetime
     arrival_at: datetime
+    duration: str
+    stops: int
     source: str
     data_status: PriceDataKind
     price_amount: Decimal | None
@@ -98,6 +117,9 @@ def build_grounded_catalog(
     _index_flights(context, catalog)
     _index_hotels(context, catalog)
     _index_weather(context, catalog)
+    from app.itinerary.reference.fusion import fuse_reference_landmarks
+
+    fuse_reference_landmarks(catalog, context)
     return catalog
 
 
@@ -109,15 +131,20 @@ def _index_attractions(
         return
     status = _places_status(search.data_status.value)
     for place in search.attractions:
+        primary_type = _normalize_primary_type(place.primary_type, place.name)
         catalog.attractions[place.place_id] = GroundedAttraction(
             place_id=place.place_id,
             name=place.name,
             latitude=place.latitude,
             longitude=place.longitude,
-            primary_type=place.primary_type,
+            primary_type=primary_type,
             source=search.source,
             data_status=status,
-            is_indoor=_is_indoor(place, catalog.indoor_attraction_types),
+            is_indoor=_is_indoor_type(primary_type, catalog.indoor_attraction_types),
+            rating=place.rating,
+            price_level=place.price_level.value if place.price_level else None,
+            address=place.address,
+            user_rating_count=place.user_rating_count,
         )
 
 
@@ -136,6 +163,11 @@ def _index_restaurants(
             longitude=place.longitude,
             source=search.source,
             data_status=status,
+            rating=place.rating,
+            price_level=place.price_level.value if place.price_level else None,
+            primary_type=place.primary_type,
+            address=place.address,
+            user_rating_count=place.user_rating_count,
         )
 
 
@@ -147,9 +179,14 @@ def _index_flights(context: ItineraryBuildContext, catalog: GroundedCatalog) -> 
     for offer in search.offers:
         catalog.flights[offer.offer_id] = GroundedFlight(
             offer_id=offer.offer_id,
-            title=f"{offer.carrier} {offer.origin}->{offer.destination}",
+            title=f"{offer.carrier} {offer.origin}→{offer.destination}",
+            carrier=offer.carrier,
+            origin=offer.origin,
+            destination=offer.destination,
             departure_at=offer.departure_at,
             arrival_at=offer.arrival_at,
+            duration=offer.duration,
+            stops=offer.stops,
             source=search.source,
             data_status=status,
             price_amount=offer.price_amount,
@@ -193,7 +230,51 @@ def _index_weather(context: ItineraryBuildContext, catalog: GroundedCatalog) -> 
 def _is_indoor(place: AttractionPlace, indoor_types: frozenset[str]) -> bool:
     if place.primary_type is None:
         return False
-    return place.primary_type in indoor_types
+    return _is_indoor_type(place.primary_type, indoor_types)
+
+
+def _is_indoor_type(primary_type: str | None, indoor_types: frozenset[str]) -> bool:
+    if primary_type is None:
+        return False
+    return primary_type in indoor_types
+
+
+def _normalize_primary_type(raw_type: str | None, name: str) -> str | None:
+    if raw_type:
+        lowered = raw_type.lower()
+        if "museum" in lowered:
+            return "museum"
+        if "gallery" in lowered or "culture" in lowered:
+            return "art_gallery"
+        if "park" in lowered or "garden" in lowered:
+            return "park"
+        if "heritage" in lowered or "historical" in lowered:
+            return "historical_landmark"
+        if "worship" in lowered or "mosque" in lowered or "temple" in lowered:
+            return "place_of_worship"
+        if "mall" in lowered or "shop" in lowered:
+            return "shopping_mall"
+        if "zoo" in lowered:
+            return "zoo"
+        if "theme_park" in lowered or "amusement" in lowered:
+            return "amusement_park"
+        if "tourism" in lowered or "sight" in lowered or "attraction" in lowered:
+            return "tourist_attraction"
+
+    name_lower = name.lower()
+    if any(token in name_lower for token in ("museum", "gallery")):
+        return "museum"
+    if any(token in name_lower for token in ("park", "garden", "beach")):
+        return "park"
+    if any(token in name_lower for token in ("mosque", "temple", "church")):
+        return "place_of_worship"
+    if any(token in name_lower for token in ("souq", "souk", "bazaar", "market")):
+        return "historical_landmark"
+    if any(token in name_lower for token in ("mall", "shopping")):
+        return "shopping_mall"
+    if any(token in name_lower for token in ("tower", "frame", "fountain", "marina")):
+        return "tourist_attraction"
+    return raw_type
 
 
 def _places_status(value: str) -> PriceDataKind:

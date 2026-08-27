@@ -36,6 +36,25 @@ def _to_async_database_url(url: str) -> str:
     raise ValueError(f"Unsupported database URL: {url}")
 
 
+@pytest.fixture(autouse=True)
+def disable_reference_landmark_fusion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep unit tests deterministic without live Wikipedia geosearch."""
+    from app.itinerary.reference import fusion
+
+    def _noop_fusion(
+        catalog: object,
+        context: object,
+        *,
+        provider: object | None = None,
+    ) -> fusion.FusionStats:
+        from app.itinerary.catalog import GroundedCatalog
+
+        assert isinstance(catalog, GroundedCatalog)
+        return fusion.FusionStats(geoapify_candidates=len(catalog.attractions))
+
+    monkeypatch.setattr(fusion, "fuse_reference_landmarks", _noop_fusion)
+
+
 @pytest.fixture(scope="session")
 def postgres_container() -> Generator[PostgresContainer]:
     with PostgresContainer("pgvector/pgvector:pg18") as postgres:

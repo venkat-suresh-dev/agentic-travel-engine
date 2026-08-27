@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from app.itinerary.assumptions import SchedulingAssumptions
 from app.itinerary.catalog import GroundedCatalog
 from app.itinerary.clustering import select_weather_aware_attractions
@@ -13,6 +15,22 @@ from app.modification.schemas import (
     ModificationScope,
     TripModificationRequest,
 )
+from app.modification.selection import (
+    re_rank_for_preference,
+    reduce_attractions,
+    select_different_attraction,
+    select_different_restaurant,
+    select_hotel,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ModificationComposeResult:
+    """Deterministic compose output, including non-LLM scheduling hints."""
+
+    candidate: ItinerarySelectionCandidate
+    selected_hotel_id: str | None = None
+    relaxed_days: tuple[int, ...] = ()
 
 
 class ModificationComposer:
@@ -29,10 +47,24 @@ class ModificationComposer:
         existing_candidate: ItinerarySelectionCandidate,
         modification: TripModificationRequest,
         scope: ModificationScope,
-    ) -> ItinerarySelectionCandidate:
+        current_hotel_id: str | None = None,
+    ) -> ModificationComposeResult:
         if context.trip_request.duration_days is None:
             msg = "duration_days is required for modification composition"
             raise ValueError(msg)
+
+        selected_hotel_id = current_hotel_id
+        relaxed_days: list[int] = []
+        if modification.intent == ModificationIntent.CHANGE_HOTEL:
+            selected_hotel_id = select_hotel(
+                catalog,
+                current_id=current_hotel_id,
+                prefer_cheaper=True,
+            )
+            return ModificationComposeResult(
+                candidate=existing_candidate,
+                selected_hotel_id=selected_hotel_id,
+            )
 
         days = list(existing_candidate.days)
         for day_number in scope.affected_days:
@@ -42,18 +74,31 @@ class ModificationComposer:
             )
             if existing_day is None:
                 continue
-            days[day_number - 1] = self._compose_day(
+            composed = self._compose_day(
                 day_number=day_number,
                 existing_day=existing_day,
                 catalog=catalog,
                 modification=modification,
-                scope=scope,
+            )
+            days[day_number - 1] = composed.day
+            if composed.relaxed:
+                relaxed_days.append(day_number)
+
+        if modification.intent == ModificationIntent.REDUCE_COST and (
+            "hotel" in scope.affected_trip_fields
+        ):
+            selected_hotel_id = select_hotel(
+                catalog,
+                current_id=current_hotel_id,
+                prefer_cheaper=True,
+                require_change=False,
             )
 
-        if ModificationIntent.CHANGE_HOTEL in {modification.intent}:
-            return existing_candidate
-
-        return ItinerarySelectionCandidate(days=days)
+        return ModificationComposeResult(
+            candidate=ItinerarySelectionCandidate(days=days),
+            selected_hotel_id=selected_hotel_id,
+            relaxed_days=tuple(relaxed_days),
+        )
 
     def _compose_day(
         self,
@@ -62,91 +107,114 @@ class ModificationComposer:
         existing_day: CandidateDayPlan,
         catalog: GroundedCatalog,
         modification: TripModificationRequest,
-        scope: ModificationScope,
-    ) -> CandidateDayPlan:
+    ) -> _ComposedDay:
         intent = modification.intent
-        restaurant_ids = catalog.restaurant_ids()
-        attraction_ids = catalog.attraction_ids()
+        message = _request_text(modification)
 
         if intent in {
             ModificationIntent.CHANGE_RESTAURANT,
             ModificationIntent.REDUCE_COST,
         }:
-            return self._cheaper_restaurant_day(
-                day_number=day_number,
-                existing_day=existing_day,
-                restaurant_ids=restaurant_ids,
+            prefer_cheaper = intent == ModificationIntent.REDUCE_COST or _wants_cheaper(
+                message
+            )
+            restaurant_id = select_different_restaurant(
+                catalog,
+                current_id=existing_day.restaurant_source_id,
+                prefer_cheaper=prefer_cheaper,
+                require_change=intent == ModificationIntent.CHANGE_RESTAURANT,
+            )
+            attractions = list(existing_day.attraction_source_ids)
+            if intent == ModificationIntent.REDUCE_COST:
+                attractions = reduce_attractions(attractions, max_items=1)
+                if attractions == existing_day.attraction_source_ids:
+                    cheaper = select_different_attraction(
+                        catalog,
+                        current_ids=existing_day.attraction_source_ids,
+                        prefer_cheaper=True,
+                        max_items=1,
+                    )
+                    if cheaper:
+                        attractions = cheaper
+            return _ComposedDay(
+                day=CandidateDayPlan(
+                    day_number=day_number,
+                    attraction_source_ids=attractions,
+                    restaurant_source_id=(
+                        restaurant_id or existing_day.restaurant_source_id
+                    ),
+                )
             )
 
-        if intent == ModificationIntent.CHANGE_ACTIVITY:
-            return self._replace_activity_day(
-                day_number=day_number,
-                existing_day=existing_day,
-                attraction_ids=attraction_ids,
-                catalog=catalog,
+        if intent in {
+            ModificationIntent.CHANGE_ACTIVITY,
+            ModificationIntent.REPLACE_ITEM,
+        }:
+            selected = select_different_attraction(
+                catalog,
+                current_ids=existing_day.attraction_source_ids,
+                prefer_cheaper=_wants_cheaper(message),
+                max_items=max(1, len(existing_day.attraction_source_ids) or 1),
+            )
+            return _ComposedDay(
+                day=CandidateDayPlan(
+                    day_number=day_number,
+                    attraction_source_ids=selected,
+                    restaurant_source_id=existing_day.restaurant_source_id,
+                )
             )
 
         if intent in {ModificationIntent.CHANGE_PACE, ModificationIntent.MODIFY_DAY}:
-            return self._relaxed_day(
-                day_number=day_number,
-                existing_day=existing_day,
-                attraction_ids=attraction_ids,
-                catalog=catalog,
+            return _ComposedDay(
+                day=self._relaxed_day(
+                    day_number=day_number,
+                    existing_day=existing_day,
+                    catalog=catalog,
+                ),
+                relaxed=True,
             )
 
-        return existing_day
+        if intent == ModificationIntent.CHANGE_PREFERENCE:
+            prefer_culture, avoid_shopping = _preference_flags(message)
+            selected = re_rank_for_preference(
+                catalog,
+                existing_day.attraction_source_ids,
+                prefer_culture=prefer_culture,
+                avoid_shopping=avoid_shopping,
+                max_items=max(1, len(existing_day.attraction_source_ids)),
+            )
+            if not selected:
+                selected = select_weather_aware_attractions(
+                    catalog.attraction_ids(),
+                    day_number=day_number,
+                    catalog=catalog,
+                    assumptions=self._assumptions,
+                    max_items=1,
+                )
+            return _ComposedDay(
+                day=CandidateDayPlan(
+                    day_number=day_number,
+                    attraction_source_ids=selected,
+                    restaurant_source_id=existing_day.restaurant_source_id,
+                )
+            )
 
-    def _cheaper_restaurant_day(
-        self,
-        *,
-        day_number: int,
-        existing_day: CandidateDayPlan,
-        restaurant_ids: list[str],
-    ) -> CandidateDayPlan:
-        if not restaurant_ids:
-            return existing_day
-        current_index = 0
-        if existing_day.restaurant_source_id in restaurant_ids:
-            current_index = restaurant_ids.index(existing_day.restaurant_source_id)
-        cheaper_index = (current_index + 1) % len(restaurant_ids)
-        return CandidateDayPlan(
-            day_number=day_number,
-            attraction_source_ids=list(existing_day.attraction_source_ids),
-            restaurant_source_id=restaurant_ids[cheaper_index],
-        )
-
-    def _replace_activity_day(
-        self,
-        *,
-        day_number: int,
-        existing_day: CandidateDayPlan,
-        attraction_ids: list[str],
-        catalog: GroundedCatalog,
-    ) -> CandidateDayPlan:
-        if not attraction_ids:
-            return existing_day
-        current = (
-            existing_day.attraction_source_ids[0]
-            if existing_day.attraction_source_ids
-            else None
-        )
-        alternatives = [item for item in attraction_ids if item != current]
-        selected = alternatives[0] if alternatives else attraction_ids[0]
-        return CandidateDayPlan(
-            day_number=day_number,
-            attraction_source_ids=[selected],
-            restaurant_source_id=existing_day.restaurant_source_id,
-        )
+        return _ComposedDay(day=existing_day)
 
     def _relaxed_day(
         self,
         *,
         day_number: int,
         existing_day: CandidateDayPlan,
-        attraction_ids: list[str],
         catalog: GroundedCatalog,
     ) -> CandidateDayPlan:
-        if not existing_day.attraction_source_ids:
+        attraction_ids = catalog.attraction_ids()
+        current = list(existing_day.attraction_source_ids)
+        if len(current) > 1:
+            selected = reduce_attractions(current, max_items=1)
+        elif current:
+            selected = current[:1]
+        else:
             selected = select_weather_aware_attractions(
                 attraction_ids,
                 day_number=day_number,
@@ -154,16 +222,17 @@ class ModificationComposer:
                 assumptions=self._assumptions,
                 max_items=1,
             )
-            return CandidateDayPlan(
-                day_number=day_number,
-                attraction_source_ids=selected,
-                restaurant_source_id=existing_day.restaurant_source_id,
-            )
         return CandidateDayPlan(
             day_number=day_number,
-            attraction_source_ids=[existing_day.attraction_source_ids[0]],
+            attraction_source_ids=selected,
             restaurant_source_id=existing_day.restaurant_source_id,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _ComposedDay:
+    day: CandidateDayPlan
+    relaxed: bool = False
 
 
 def existing_candidate_from_context(
@@ -177,3 +246,25 @@ def existing_candidate_from_context(
         msg = "previous itinerary is required for modification composition"
         raise TypeError(msg)
     return candidate_from_itinerary(previous_itinerary)
+
+
+def _request_text(modification: TripModificationRequest) -> str:
+    parts = [modification.raw_message, *modification.requested_changes]
+    return " ".join(part for part in parts if part).lower()
+
+
+def _wants_cheaper(message: str) -> bool:
+    return any(
+        token in message
+        for token in ("cheap", "cheaper", "budget", "less expensive", "lower cost")
+    )
+
+
+def _preference_flags(message: str) -> tuple[bool, bool]:
+    prefer_culture = any(
+        token in message for token in ("culture", "museum", "heritage", "history")
+    )
+    avoid_shopping = "less shopping" in message or (
+        "shopping" in message and "less" in message
+    )
+    return prefer_culture, avoid_shopping

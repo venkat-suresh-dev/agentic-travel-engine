@@ -32,7 +32,7 @@ test.describe("Planner empty state viewport QA", () => {
       });
       await page.goto("/planner");
       await expect(
-        page.getByRole("heading", { name: /plan a trip without the spreadsheet/i }),
+        page.getByRole("heading", { name: /describe your trip/i }),
       ).toBeVisible();
 
       const checks = await page.evaluate(() => {
@@ -44,21 +44,11 @@ test.describe("Planner empty state viewport QA", () => {
           return rect.top >= 0 && rect.bottom <= viewportHeight + 1;
         };
 
-        const destinations =
-          document.querySelector('[data-testid="planner-empty-destinations"]') ??
-          document.querySelector('[data-testid="planner-empty-destinations-mobile"]');
-
         return {
           headline: isInViewport("#planner-empty-heading"),
           composer: isInViewport('[data-testid="planner-empty-composer"]'),
           cta: isInViewport('[data-testid="planner-empty-cta"]'),
           examples: isInViewport('[data-testid="planner-empty-examples"]'),
-          destinations: destinations
-            ? (() => {
-                const rect = destinations.getBoundingClientRect();
-                return rect.top >= 0 && rect.bottom <= viewportHeight + 1;
-              })()
-            : false,
           noPageScroll: document.documentElement.scrollHeight <= viewportHeight + 2,
           scrollWidth: document.documentElement.scrollWidth,
           clientWidth: document.documentElement.clientWidth,
@@ -70,7 +60,6 @@ test.describe("Planner empty state viewport QA", () => {
       expect(checks.composer).toBe(true);
       expect(checks.cta).toBe(true);
       expect(checks.examples).toBe(true);
-      expect(checks.destinations).toBe(true);
       expect(checks.noPageScroll).toBe(true);
     });
   }

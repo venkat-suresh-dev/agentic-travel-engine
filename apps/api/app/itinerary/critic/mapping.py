@@ -52,6 +52,16 @@ def is_retryable(code: CriticIssueCode) -> bool:
 
 
 def default_severity(code: CriticIssueCode) -> CriticIssueSeverity:
-    if code == CriticIssueCode.BUDGET_EXCEEDED:
+    if code in {
+        CriticIssueCode.BUDGET_EXCEEDED,
+        CriticIssueCode.REPEATED_ATTRACTION,
+        CriticIssueCode.REPEATED_RESTAURANT,
+        CriticIssueCode.LOW_CATEGORY_DIVERSITY,
+        CriticIssueCode.LOW_GEOGRAPHIC_DIVERSITY,
+        CriticIssueCode.LOW_LANDMARK_COVERAGE,
+        CriticIssueCode.LOW_PLACE_QUALITY,
+        CriticIssueCode.SPARSE_DAY,
+        CriticIssueCode.EXCESSIVE_TRAVEL,
+    }:
         return CriticIssueSeverity.WARNING
     return CriticIssueSeverity.ERROR

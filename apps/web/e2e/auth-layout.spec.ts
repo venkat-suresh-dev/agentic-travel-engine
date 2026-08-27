@@ -108,7 +108,7 @@ test("landing open planner navigates without RSC payload error", async ({ page }
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  await page.getByRole("link", { name: /open planner/i }).click();
+  await page.getByRole("main").getByRole("link", { name: /start planning/i }).click();
   await page.waitForURL(/\/planner/);
 
   expect(rscErrors).toHaveLength(0);
@@ -130,7 +130,7 @@ test("unauthenticated landing open planner redirects to sign-in without RSC erro
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: /open planner/i }).click();
+  await page.getByRole("main").getByRole("link", { name: /start planning/i }).click();
   await page.waitForURL(/\/sign-in/, { timeout: 30_000 });
 
   expect(rscErrors).toHaveLength(0);

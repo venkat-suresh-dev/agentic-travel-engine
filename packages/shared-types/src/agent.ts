@@ -12,6 +12,7 @@ export type PriceDataKind =
   | "cached"
   | "estimated"
   | "free"
+  | "reference"
   | "unavailable";
 
 export type ItineraryItemCategory =
@@ -30,6 +31,9 @@ export interface ItemCost {
   currency: string;
   is_estimate: boolean;
   data_kind: PriceDataKind;
+  /** Provider-native amount when display currency differs. */
+  source_amount?: string | null;
+  source_currency?: string | null;
 }
 
 export interface ItineraryItem {
@@ -72,6 +76,8 @@ export interface MealSuggestion {
 export interface ItineraryDay {
   day_number: number;
   date: string | null;
+  day_theme?: string | null;
+  theme_subtitle?: string | null;
   items: ItineraryItem[];
   travel_legs: TravelLeg[];
   meal: MealSuggestion | null;
@@ -117,6 +123,27 @@ export interface OperationResult {
   refreshed_sources: string[];
   budget_changed: boolean;
   summary: string | null;
+  change_facts: string[];
+}
+
+export type BudgetCategory =
+  | "flight"
+  | "hotel"
+  | "food"
+  | "activity"
+  | "transport"
+  | "other";
+
+export interface BudgetCategoryLine {
+  category: BudgetCategory;
+  amount: string | null;
+  currency: string;
+  data_kind: PriceDataKind;
+  included_in_total: boolean;
+  is_estimate: boolean;
+  source_amount?: string | null;
+  source_currency?: string | null;
+  assumption?: string | null;
 }
 
 export interface BudgetSummary {
@@ -126,6 +153,7 @@ export interface BudgetSummary {
   remaining: string;
   budget_exceeded: boolean;
   variance: string;
+  categories: BudgetCategoryLine[];
 }
 
 export interface CriticSummary {
@@ -136,9 +164,19 @@ export interface CriticSummary {
   warnings: string[];
 }
 
+export interface ToolExecutionRecord {
+  tool_name: string;
+  status: "success" | "unavailable" | "error" | "skipped";
+  data_mode: PriceDataKind | "sandbox";
+  provider: string | null;
+  duration_ms: number | null;
+}
+
 export interface ToolAvailability {
   aggregate_status: string | null;
   unavailable_tools: string[];
+  duration_ms: number | null;
+  tools: ToolExecutionRecord[];
 }
 
 export interface PlanningFailure {

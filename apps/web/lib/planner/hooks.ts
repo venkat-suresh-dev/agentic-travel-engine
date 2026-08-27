@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 import { createAgentRun, fetchAgentRun, sendAgentRunMessage } from "@/lib/api/agent";
 import { friendlyErrorMessage } from "@/lib/api/errors";
@@ -23,6 +24,12 @@ import {
 
 export const plannerRunKey = (runId: string) => ["planner-run", runId] as const;
 
+const subscribeClientReady = () => () => {};
+
+export function useClientReady(): boolean {
+  return useSyncExternalStore(subscribeClientReady, () => true, () => false);
+}
+
 function createEntry(
   role: ConversationEntry["role"],
   kind: ConversationEntry["kind"],
@@ -37,7 +44,10 @@ function createEntry(
   };
 }
 
-export function usePlannerSession(runId: string, options?: { enabled?: boolean }) {
+export function usePlannerSession(
+  runId: string,
+  options?: { enabled?: boolean; placeholderData?: PlannerSession },
+) {
   const getToken = usePlannerToken();
 
   return useQuery({
@@ -53,7 +63,7 @@ export function usePlannerSession(runId: string, options?: { enabled?: boolean }
       savePlannerSession(session);
       return session;
     },
-    placeholderData: () => loadPlannerSession(runId) ?? undefined,
+    placeholderData: options?.placeholderData,
     staleTime: Infinity,
     enabled: options?.enabled ?? Boolean(runId),
   });

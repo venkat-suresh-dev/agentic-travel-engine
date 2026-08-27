@@ -121,11 +121,11 @@ Structured domain models live in `app/domain/trip_request.py`.
 The following nodes run concurrently after validation when requirements are complete:
 
 - `fetch_weather` — Open-Meteo forecast via `WeatherTool`
-- `search_flights` — Amadeus flight offers via `FlightTool`
-- `search_hotels` — Amadeus hotel search via `HotelTool`
-- `get_distance_matrix` — OpenRouteService matrix via `DistanceTool`
-- `search_restaurants` — Google Places via `RestaurantTool`
-- `search_attractions` — Google Places via `AttractionTool`
+- `search_flights` — SerpApi Google Flights (demo default) or Amadeus via `FlightTool`
+- `search_hotels` — StayingAPI sandbox (demo default) or Amadeus via `HotelTool`
+- `get_distance_matrix` — OpenRouteService matrix via `DistanceTool` (route estimation)
+- `search_restaurants` — Geoapify via `RestaurantTool`
+- `search_attractions` — Geoapify + Wikipedia reference fusion via `AttractionTool`
 
 Each node uses `run_bounded_tool_node` for concurrency limiting and orchestration tracing. Per-tool timeout/retry/cache/degraded-mode behavior remains inside each MCP service.
 

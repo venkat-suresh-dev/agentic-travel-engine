@@ -23,7 +23,12 @@ class ItineraryItemCategory(StrEnum):
 
 
 class ItemCost(BaseModel):
-    """Item-level cost with provenance semantics."""
+    """Item-level cost with provenance semantics.
+
+    ``amount`` / ``currency`` are the display values (trip currency when a
+    conversion was applied). Provider-native amounts stay in
+    ``source_amount`` / ``source_currency`` when they differ.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -31,6 +36,8 @@ class ItemCost(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
     is_estimate: bool = False
     data_kind: PriceDataKind
+    source_amount: Decimal | None = None
+    source_currency: str | None = Field(default=None, min_length=3, max_length=3)
 
 
 class ItineraryItem(BaseModel):
@@ -57,6 +64,9 @@ class ItineraryItem(BaseModel):
     @model_validator(mode="after")
     def validate_time_order(self) -> ItineraryItem:
         if self.end_time <= self.start_time:
+            # Overnight flights may arrive on the next calendar day.
+            if self.category == ItineraryItemCategory.FLIGHT:
+                return self
             msg = "end_time must be after start_time"
             raise ValueError(msg)
         return self
@@ -103,6 +113,8 @@ class ItineraryDay(BaseModel):
 
     day_number: int = Field(ge=1)
     date: CalendarDate | None = None
+    day_theme: str | None = None
+    theme_subtitle: str | None = None
     items: list[ItineraryItem] = Field(default_factory=list)
     travel_legs: list[TravelLeg] = Field(default_factory=list)
     meal: MealSuggestion | None = None

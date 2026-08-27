@@ -255,17 +255,19 @@ def main() -> int:
             currency="INR",
         )
         service = build_flight_service()
-        _, meta1 = service.search_flights(flight_req)
-        _, meta2 = service.search_flights(flight_req)
-        ok = meta1.cache_status == "miss" and meta2.cache_status == "hit"
+        result, meta1 = service.search_flights(flight_req)
+        live_ok = len(result.offers) > 0 and result.data_status.value == "live"
         _status(
-            "flight-cache",
-            ok,
-            f"first={meta1.cache_status} second={meta2.cache_status}",
+            "flight-error-cache",
+            live_ok,
+            (
+                "cache is used on provider errors only; "
+                f"live search offers={len(result.offers)} cache={meta1.cache_status}"
+            ),
         )
-        failures += 0 if ok else 1
+        failures += 0 if live_ok else 1
     except Exception as exc:
-        _status("flight-cache", False, str(exc)[:120])
+        _status("flight-error-cache", False, str(exc)[:120])
         failures += 1
 
     print()

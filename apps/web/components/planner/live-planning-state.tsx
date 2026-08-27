@@ -148,7 +148,7 @@ export function LivePlanningState({
       ) : null}
 
       {toolItems.length > 0 ? (
-        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-2.5">
+        <div className="space-y-2 rounded-md bg-[var(--surface)]/80 p-2.5">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
             Live sources
             {execution.parallelActive ? (

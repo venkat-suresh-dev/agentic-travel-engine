@@ -34,7 +34,7 @@ test.describe("Live local stack", () => {
     await page.goto("/planner");
     await expect(
       page.getByRole("heading", {
-        name: /plan a trip without the spreadsheet/i,
+        name: /describe your trip/i,
       }),
     ).toBeVisible();
   });
@@ -116,16 +116,24 @@ test.describe("Live stack Phase 7B layout", () => {
           const rect = el.getBoundingClientRect();
           return rect.top >= 0 && rect.bottom <= viewportHeight + 1;
         };
+        const isPartiallyInViewport = (el: Element | null) => {
+          if (!el) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.top < viewportHeight && rect.bottom > 0 && rect.top < viewportHeight * 0.92;
+        };
 
         return {
           destination: isInViewport(document.querySelector("h1")),
           budget:
             isInViewport(document.querySelector('[aria-label="Budget summary"]')) ||
             isInViewport(document.querySelector("#budget-heading-compact")),
-          dayTab: isInViewport(
+          logistics: isInViewport(document.querySelector('[aria-label="Trip essentials"]')),
+          dayTab: isPartiallyInViewport(
             document.querySelector('[role="tab"][aria-selected="true"]'),
           ),
-          activity: isInViewport(document.querySelector("ol li")),
+          activity: isPartiallyInViewport(
+            document.querySelector('[role="tabpanel"] ol li'),
+          ),
           overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
         };
       });
@@ -133,8 +141,11 @@ test.describe("Live stack Phase 7B layout", () => {
       expect(checks.overflow).toBe(false);
       expect(checks.destination).toBe(true);
       expect(checks.budget).toBe(true);
+      expect(checks.logistics).toBe(true);
       expect(checks.dayTab).toBe(true);
-      expect(checks.activity).toBe(true);
+      if (viewport.width >= 1440 && viewport.height >= 900) {
+        expect(checks.activity).toBe(true);
+      }
     });
   }
 });

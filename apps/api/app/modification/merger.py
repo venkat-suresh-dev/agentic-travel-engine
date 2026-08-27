@@ -20,6 +20,7 @@ def merge_modified_itinerary(
     previous: Itinerary,
     modified_days: list[ItineraryDay],
     scope: ModificationScope,
+    infrastructure_items: list[ItineraryItem] | None = None,
 ) -> Itinerary:
     """Merge modified days into the previous itinerary preserving stable IDs."""
     modified_by_day = {day.day_number: day for day in modified_days}
@@ -39,11 +40,8 @@ def merge_modified_itinerary(
 
     infrastructure = list(previous.infrastructure_items)
     if "hotel" in scope.affected_trip_fields:
-        infrastructure = _replace_infrastructure(
-            infrastructure,
-            modified_days,
-            category=ItineraryItemCategory.HOTEL,
-        )
+        source = infrastructure_items if infrastructure_items is not None else []
+        infrastructure = _replace_hotel_infrastructure(infrastructure, source)
 
     total = _sum_days(merged_days)
     return previous.model_copy(
@@ -89,17 +87,19 @@ def _preserve_item_ids(
     return modified_day.model_copy(update={"items": preserved_items})
 
 
-def _replace_infrastructure(
-    infrastructure: list[ItineraryItem],
-    modified_days: list[ItineraryDay],
-    *,
-    category: ItineraryItemCategory,
+def _replace_hotel_infrastructure(
+    previous: list[ItineraryItem],
+    updated: list[ItineraryItem],
 ) -> list[ItineraryItem]:
-    preserved = [item for item in infrastructure if item.category != category]
-    new_items = [
-        item for day in modified_days for item in day.items if item.category == category
+    preserved = [
+        item for item in previous if item.category != ItineraryItemCategory.HOTEL
     ]
-    return preserved + new_items
+    new_hotels = [
+        item for item in updated if item.category == ItineraryItemCategory.HOTEL
+    ]
+    if not new_hotels:
+        return previous
+    return preserved + new_hotels
 
 
 def _sum_days(days: list[ItineraryDay]) -> Decimal:

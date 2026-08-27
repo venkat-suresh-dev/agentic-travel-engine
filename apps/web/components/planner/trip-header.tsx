@@ -1,101 +1,80 @@
 import type { AgentRunResponse } from "@agentic-travel-engine/shared-types";
+import type { ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { formatDateRange, formatMoney, getBudgetHealth } from "@/lib/planner/format";
+import {
+  formatDateRange,
+  formatMoney,
+  getBudgetHealth,
+} from "@/lib/planner/format";
 import { cn } from "@/lib/utils";
 
 interface TripHeaderProps {
   run: AgentRunResponse;
   className?: string;
+  trace?: ReactNode;
 }
 
-function statusLabel(status: AgentRunResponse["status"]): string {
-  if (status === "complete") return "Ready";
-  if (status === "needs_clarification") return "Needs details";
-  return "Attention required";
-}
-
-export function TripHeader({ run, className }: TripHeaderProps) {
+export function TripHeader({ run, className, trace }: TripHeaderProps) {
   const trip = run.trip_request;
   const budget = run.budget;
   const destination = trip?.destination ?? "Your trip";
   const travelers = trip?.travelers ?? 1;
   const duration = trip?.duration_days;
-  const dateLabel = formatDateRange(
-    trip?.start_date ?? null,
-    trip?.end_date ?? null,
-    duration ?? null,
-  );
+  const dateLabel = duration
+    ? `${duration} day${duration === 1 ? "" : "s"}`
+    : formatDateRange(
+        trip?.start_date ?? null,
+        trip?.end_date ?? null,
+        duration ?? null,
+      );
   const health = budget ? getBudgetHealth(budget) : null;
-  const summary =
-    run.operation.summary && run.operation.operation_type === "initial_plan"
-      ? run.operation.summary
-      : null;
+  const route =
+    trip?.departure_city && trip.destination
+      ? `${trip.departure_city} → ${trip.destination}`
+      : trip?.departure_city
+        ? `from ${trip.departure_city}`
+        : null;
 
   return (
-    <header
-      className={cn(
-        "rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[var(--shadow-soft)] md:px-5",
-        className,
-      )}
-    >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={run.status === "complete" ? "success" : "warning"}>
-              {statusLabel(run.status)}
-            </Badge>
-            {trip?.trip_type ? (
-              <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                {trip.trip_type}
-              </span>
-            ) : null}
-          </div>
-          <h1 className="mt-1 font-display text-2xl leading-tight tracking-tight text-[var(--foreground)] md:text-3xl">
-            {destination}
-          </h1>
-          <p className="mt-0.5 text-sm text-[var(--foreground-secondary)]">
-            {dateLabel} · {travelers} traveler{travelers === 1 ? "" : "s"}
-            {trip?.departure_city ? ` · from ${trip.departure_city}` : ""}
-          </p>
-          {summary ? (
-            <p className="mt-1 line-clamp-2 text-sm text-[var(--foreground-muted)]">
-              {summary}
-            </p>
-          ) : null}
-        </div>
-
+    <header className={cn("flex min-w-0 items-start justify-between gap-4", className)}>
+      <div className="min-w-0 space-y-2">
+        <h1 className="font-display text-[2.25rem] leading-[0.92] tracking-tight text-[var(--foreground)] md:text-[2.75rem]">
+          {destination}
+        </h1>
+        <p className="text-sm leading-snug text-[var(--foreground-secondary)]">
+          {dateLabel} · {travelers} traveler{travelers === 1 ? "" : "s"}
+          {route ? ` · ${route}` : ""}
+        </p>
         {budget ? (
-          <div className="flex shrink-0 items-end gap-4 border-t border-[var(--border)] pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                Estimate
-              </p>
-              <p className="font-display text-2xl leading-none text-[var(--foreground)]">
-                {formatMoney(budget.total_cost, budget.currency)}
-              </p>
-              <p className="mt-0.5 text-xs text-[var(--foreground-secondary)]">
-                of {formatMoney(budget.budget_amount, budget.currency)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                Remaining
-              </p>
-              <p className="text-lg font-medium text-[var(--foreground)]">
-                {formatMoney(budget.remaining, budget.currency)}
-              </p>
-              {health === "near" ? (
-                <p className="text-xs text-[var(--budget-near-fg)]">Near budget</p>
-              ) : health === "over" ? (
-                <p className="text-xs text-[var(--budget-over-fg)]">Over budget</p>
-              ) : (
-                <p className="text-xs text-[var(--budget-under-fg)]">On track</p>
+          <div className="pt-1" aria-label="Budget summary">
+            <p className="font-display text-[1.5rem] leading-none tabular-nums text-[var(--foreground)] md:text-[1.65rem]">
+              {formatMoney(budget.total_cost, budget.currency)}
+            </p>
+            <p
+              className={cn(
+                "mt-1.5 text-sm tabular-nums",
+                health === "over"
+                  ? "font-medium text-[var(--budget-over-fg)]"
+                  : health === "near"
+                    ? "text-[var(--budget-near-fg)]"
+                    : "text-[var(--foreground-secondary)]",
               )}
-            </div>
+            >
+              {health === "over"
+                ? `Over budget by ${formatMoney(
+                    Math.abs(Number(budget.remaining)),
+                    budget.currency,
+                  )}`
+                : `${formatMoney(budget.remaining, budget.currency)} remaining`}
+              <span className="text-[var(--foreground-muted)]">
+                {" "}
+                · of {formatMoney(budget.budget_amount, budget.currency)}
+              </span>
+            </p>
           </div>
         ) : null}
       </div>
+      {trace ? <div className="shrink-0 pt-1">{trace}</div> : null}
     </header>
   );
 }

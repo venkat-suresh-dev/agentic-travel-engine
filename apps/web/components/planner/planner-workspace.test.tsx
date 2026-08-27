@@ -37,8 +37,12 @@ describe("PlannerWorkspace", () => {
         />
       </TooltipProvider>,
     );
-    expect(screen.getByText(/what would you like to change/i)).toBeInTheDocument();
+    expect(screen.getByText(/refine your trip/i)).toBeInTheDocument();
     expect(screen.getAllByText("Breakfast").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/trip essentials/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/flight details/i)).toBeInTheDocument();
+    expect(screen.getByText("Downtown Hotel")).toBeInTheDocument();
+    expect(screen.getByLabelText(/getting around details/i)).toBeInTheDocument();
   });
 
   it("keeps itinerary visible when modification fails", () => {
@@ -54,6 +58,10 @@ describe("PlannerWorkspace", () => {
       </TooltipProvider>,
     );
     expect(screen.getByText(/couldn't apply that change/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Breakfast").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("tab", { name: /day 02/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Dubai Museum")).toBeInTheDocument();
   });
 });

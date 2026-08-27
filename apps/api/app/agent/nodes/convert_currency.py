@@ -10,6 +10,7 @@ from app.agent.orchestration.tool_runner import ToolExecuteResult, run_bounded_t
 from app.agent.state import (
     AgentState,
     flight_search_from_state,
+    hotel_search_from_state,
     trip_request_from_state,
 )
 from app.tools.currency import CurrencyTool
@@ -23,7 +24,7 @@ def build_convert_currency_node(
     """Create a currency conversion node bound to the provided tool."""
 
     def convert_currency(state: AgentState) -> AgentState:
-        """Convert the lowest flight offer into the trip budget currency."""
+        """Convert foreign provider totals into the trip budget currency."""
         trip_request = trip_request_from_state(state)
         if trip_request is None:
             return {}
@@ -31,6 +32,7 @@ def build_convert_currency_node(
         plan = build_currency_conversion_plan(
             trip_request,
             flight_search_from_state(state),
+            hotel_search_from_state(state),
         )
         if plan is None:
             return run_bounded_tool_node(

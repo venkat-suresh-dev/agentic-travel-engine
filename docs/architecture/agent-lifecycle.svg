@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="life-title life-desc">
+  <title id="life-title">Agent Lifecycle</title>
+  <desc id="life-desc">LangGraph planning flow from requirement extraction through critic validation, with modification path.</desc>
+
+  <rect width="1200" height="800" fill="#f4efe6"/>
+
+  <text x="48" y="52" font-family="Georgia, Times New Roman, serif" font-size="26" font-weight="600" fill="#1f2421">Agent Lifecycle</text>
+  <text x="48" y="80" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" fill="#8b8173">Initial planning and selective modification paths</text>
+
+  <!-- main flow center column -->
+  <rect x="460" y="110" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="138" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">extract_requirements</text>
+
+  <line x1="600" y1="154" x2="600" y2="172" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,172 596,164 604,164" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="172" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="200" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">validate</text>
+
+  <!-- incomplete branch -->
+  <line x1="460" y1="194" x2="320" y2="194" stroke="#8b8173" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.7"/>
+  <polygon points="320,194 328,190 328,198" fill="#8b8173" opacity="0.7"/>
+  <text x="370" y="186" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">incomplete</text>
+  <rect x="120" y="174" width="200" height="44" rx="12" fill="#f3ebe0" stroke="#c9b9a8" stroke-width="1.5"/>
+  <text x="220" y="202" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">ask_user</text>
+
+  <line x1="600" y1="216" x2="600" y2="248" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,248 596,240 604,240" fill="#0d5c63" opacity="0.6"/>
+  <text x="640" y="236" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">complete</text>
+
+  <rect x="420" y="248" width="360" height="56" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="272" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">parallel tools</text>
+  <text x="600" y="292" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">flights, hotels, weather, places, distance</text>
+
+  <line x1="600" y1="304" x2="600" y2="328" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,328 596,320 604,320" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="328" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="356" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">aggregate</text>
+
+  <line x1="600" y1="372" x2="600" y2="396" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,396 596,388 604,388" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="396" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="424" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">currency</text>
+
+  <line x1="600" y1="440" x2="600" y2="464" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,464 596,456 604,456" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="464" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="492" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">budget</text>
+
+  <line x1="600" y1="508" x2="600" y2="532" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,532 596,524 604,524" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="532" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="560" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">itinerary</text>
+
+  <line x1="600" y1="576" x2="600" y2="600" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,600 596,592 604,592" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="460" y="600" width="280" height="44" rx="12" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="628" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">critic</text>
+
+  <line x1="600" y1="644" x2="600" y2="668" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,668 596,660 604,660" fill="#0d5c63" opacity="0.6"/>
+
+  <!-- retry branch -->
+  <line x1="460" y1="622" x2="300" y2="622" stroke="#8b8173" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.7"/>
+  <polygon points="300,622 308,618 308,626" fill="#8b8173" opacity="0.7"/>
+  <text x="370" y="614" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">retry</text>
+  <rect x="120" y="602" width="180" height="44" rx="12" fill="#f3ebe0" stroke="#c9b9a8" stroke-width="1.5"/>
+  <text x="210" y="630" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#1f2421">retry / rebuild</text>
+
+  <!-- approve branch -->
+  <line x1="740" y1="622" x2="880" y2="622" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="880,622 872,618 872,626" fill="#0d5c63" opacity="0.6"/>
+  <text x="800" y="614" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">approve</text>
+  <rect x="880" y="602" width="200" height="44" rx="12" fill="#0d5c63" stroke="#0d5c63" stroke-width="1.5"/>
+  <text x="980" y="630" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="600" fill="#fbf8f2">finalize</text>
+
+  <!-- modification path -->
+  <rect x="880" y="110" width="260" height="200" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="1010" y="140" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="600" fill="#1f2421">Modification Path</text>
+  <text x="900" y="168" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">completed itinerary</text>
+  <line x1="900" y1="178" x2="1120" y2="178" stroke="#8b8173" stroke-width="1" opacity="0.4"/>
+  <text x="900" y="196" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#1f2421">modification</text>
+  <line x1="900" y1="206" x2="1120" y2="206" stroke="#8b8173" stroke-width="1" opacity="0.4"/>
+  <text x="900" y="224" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#1f2421">selective refresh</text>
+  <line x1="900" y1="234" x2="1120" y2="234" stroke="#8b8173" stroke-width="1" opacity="0.4"/>
+  <text x="900" y="252" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#1f2421">rebuild affected scope</text>
+  <line x1="900" y1="262" x2="1120" y2="262" stroke="#8b8173" stroke-width="1" opacity="0.4"/>
+  <text x="900" y="280" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#1f2421">critic</text>
+
+  <line x1="880" y1="310" x2="780" y2="400" stroke="#8b8173" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.5"/>
+</svg>

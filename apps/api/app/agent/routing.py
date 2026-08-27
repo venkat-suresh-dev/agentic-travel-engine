@@ -25,7 +25,9 @@ RouteAfterModificationScope = Literal["apply_modification"] | list[Send]
 RouteAfterAggregate = Literal["convert_currency", "apply_modification"]
 RouteAfterConvertCurrency = Literal["compute_budget", "apply_modification"]
 RouteAfterApplyModification = Literal[
-    "recompute_modification_budget", "critic_validate"
+    "recompute_modification_budget",
+    "critic_validate",
+    "finalize_modification_failure",
 ]
 RouteAfterCritic = Literal[
     "finalize_run",
@@ -91,6 +93,8 @@ def route_after_convert_currency(state: AgentState) -> RouteAfterConvertCurrency
 
 def route_after_apply_modification(state: AgentState) -> RouteAfterApplyModification:
     """Recompute budget when a modification changes cost-bearing items."""
+    if state.get("modification_failure") is not None:
+        return "finalize_modification_failure"
     raw_scope = state.get("modification_scope")
     if raw_scope is None:
         return "critic_validate"

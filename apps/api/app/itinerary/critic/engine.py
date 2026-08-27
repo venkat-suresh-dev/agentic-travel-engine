@@ -21,6 +21,7 @@ from app.itinerary.critic.schemas import (
     CriticIssueSeverity,
     CriticResult,
 )
+from app.itinerary.diversity.quality import assess_trip_diversity
 from app.itinerary.schemas import (
     Itinerary,
     ItineraryItemCategory,
@@ -74,6 +75,9 @@ class ItineraryCritic:
         issues.extend(self._check_budget_consistency(itinerary, context))
         issues.extend(self._check_locations(itinerary))
         issues.extend(self._check_weather_rules(itinerary, catalog))
+        warnings.extend(
+            self._check_diversity_quality(candidate, itinerary, catalog, context)
+        )
 
         if context.budget_result.budget_exceeded:
             warnings.append(
@@ -217,6 +221,138 @@ class ItineraryCritic:
                         )
                     )
         return issues
+
+    def _check_diversity_quality(
+        self,
+        candidate: ItinerarySelectionCandidate,
+        itinerary: Itinerary,
+        catalog: GroundedCatalog,
+        context: ItineraryBuildContext,
+    ) -> list[CriticIssue]:
+        warnings: list[CriticIssue] = []
+        metrics = assess_trip_diversity(candidate, itinerary, catalog)
+        duration = context.trip_request.duration_days or 1
+
+        for attraction_id in metrics.repeated_attractions:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.REPEATED_ATTRACTION,
+                    severity=CriticIssueSeverity.WARNING,
+                    message=f"attraction {attraction_id} appears on multiple days",
+                    source_id=attraction_id,
+                )
+            )
+
+        for restaurant_id in metrics.repeated_restaurants:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.REPEATED_RESTAURANT,
+                    severity=CriticIssueSeverity.WARNING,
+                    message=f"restaurant {restaurant_id} appears on multiple days",
+                    source_id=restaurant_id,
+                )
+            )
+
+        if metrics.unique_categories < 2 and len(catalog.attractions) >= 3:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.LOW_CATEGORY_DIVERSITY,
+                    severity=CriticIssueSeverity.WARNING,
+                    message="itinerary has low activity category diversity",
+                )
+            )
+
+        if metrics.unique_regions < min(2, duration) and len(catalog.attractions) >= 4:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.LOW_GEOGRAPHIC_DIVERSITY,
+                    severity=CriticIssueSeverity.WARNING,
+                    message="itinerary covers few geographic areas",
+                )
+            )
+
+        for day_number in metrics.sparse_days:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.SPARSE_DAY,
+                    severity=CriticIssueSeverity.WARNING,
+                    message="day has fewer than two meaningful activities",
+                    day_number=day_number,
+                )
+            )
+
+        for day in itinerary.days:
+            travel_minutes = sum(leg.duration_seconds for leg in day.travel_legs) // 60
+            if travel_minutes >= 90:
+                warnings.append(
+                    CriticIssue(
+                        code=CriticIssueCode.EXCESSIVE_TRAVEL,
+                        severity=CriticIssueSeverity.WARNING,
+                        message=f"day has {travel_minutes} minutes of travel",
+                        day_number=day.day_number,
+                    )
+                )
+
+        landmark_pool = sum(
+            1
+            for attraction in catalog.attractions.values()
+            if attraction.significance_tier.value in {"landmark", "reference_landmark"}
+        )
+        selected_landmarks = 0
+        for day in itinerary.days:
+            for item in day.items:
+                if (
+                    item.category != ItineraryItemCategory.ATTRACTION
+                    or not item.source_id
+                ):
+                    continue
+                attraction = catalog.attractions.get(item.source_id)
+                if attraction is None:
+                    continue
+                if attraction.significance_tier.value in {
+                    "landmark",
+                    "reference_landmark",
+                }:
+                    selected_landmarks += 1
+
+        min_expected = min(2, duration, landmark_pool)
+        if landmark_pool >= 2 and selected_landmarks < min_expected:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.LOW_LANDMARK_COVERAGE,
+                    severity=CriticIssueSeverity.WARNING,
+                    message=(
+                        "itinerary includes few landmark-tier experiences "
+                        "despite available reference coverage"
+                    ),
+                )
+            )
+
+        weak_selected = 0
+        from app.itinerary.quality import score_attraction
+
+        for day in itinerary.days:
+            for item in day.items:
+                if (
+                    item.category != ItineraryItemCategory.ATTRACTION
+                    or not item.source_id
+                ):
+                    continue
+                attraction = catalog.attractions.get(item.source_id)
+                if attraction is None:
+                    continue
+                if score_attraction(attraction) < 0.45:
+                    weak_selected += 1
+        if weak_selected >= 2:
+            warnings.append(
+                CriticIssue(
+                    code=CriticIssueCode.LOW_PLACE_QUALITY,
+                    severity=CriticIssueSeverity.WARNING,
+                    message="itinerary includes multiple low-signal place selections",
+                )
+            )
+
+        return warnings
 
 
 def _dedupe_issues(issues: list[CriticIssue]) -> list[CriticIssue]:

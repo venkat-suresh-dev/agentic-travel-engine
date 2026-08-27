@@ -56,6 +56,12 @@ export const clerkAppearance = {
     navbarButton: "text-[var(--foreground)]",
     profileSectionTitle: "font-display text-[var(--foreground)]",
     profileSectionContent: "text-[var(--foreground-secondary)]",
+    userButtonBox: "h-9 w-9",
+    userButtonTrigger:
+      "flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-[var(--border)]/80 transition hover:ring-[var(--accent)] focus:shadow-none",
+    userButtonAvatarBox:
+      "h-9 w-9 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-none",
+    avatarBox: "h-9 w-9 rounded-full",
     userButtonPopoverCard:
       "rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-soft)]",
     userButtonPopoverActionButton: "text-[var(--foreground)] hover:bg-[var(--surface-hover)]",

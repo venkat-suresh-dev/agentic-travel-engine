@@ -80,9 +80,6 @@ test.describe("100% zoom baseline — no accidental scaling", () => {
           composer: isInViewport('[data-testid="planner-empty-composer"]'),
           cta: isInViewport('[data-testid="planner-empty-cta"]'),
           examples: isInViewport('[data-testid="planner-empty-examples"]'),
-          destinations:
-            isInViewport('[data-testid="planner-empty-destinations"]') ||
-            isInViewport('[data-testid="planner-empty-destinations-mobile"]'),
         };
       });
 
@@ -92,7 +89,6 @@ test.describe("100% zoom baseline — no accidental scaling", () => {
       expect(metrics.composer).toBe(true);
       expect(metrics.cta).toBe(true);
       expect(metrics.examples).toBe(true);
-      expect(metrics.destinations).toBe(true);
     });
   }
 });

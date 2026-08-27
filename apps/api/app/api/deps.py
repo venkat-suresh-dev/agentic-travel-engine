@@ -25,6 +25,7 @@ from app.core.config import settings
 from app.core.current_user import CurrentUser
 from app.db.models.trip import Trip
 from app.db.session import async_session_factory, get_db
+from app.itinerary.composer.fake import FakeItineraryComposer
 from app.llm.factory import build_llm_adapter
 from app.rag.factory import build_rag_retriever
 from app.services.agent_run_events import AgentRunEventBus
@@ -160,6 +161,9 @@ def get_currency_tool() -> CurrencyTool:
 @lru_cache
 def get_trip_planner_agent_service() -> TripPlannerAgentService:
     rag_retriever = build_rag_retriever(async_session_factory)
+    # Production uses deterministic diverse composition (FakeItineraryComposer).
+    # LLMItineraryComposer is available via compile_trip_planner_graph for
+    # experiments but lacks the diversity/quality guarantees required for demo.
     return TripPlannerAgentService(
         llm_adapter=build_llm_adapter(),
         weather_tool=get_weather_tool(),
@@ -173,6 +177,7 @@ def get_trip_planner_agent_service() -> TripPlannerAgentService:
         attraction_tool=get_attraction_tool(),
         currency_tool=get_currency_tool(),
         rag_retriever=rag_retriever,
+        itinerary_composer=FakeItineraryComposer(),
     )
 
 

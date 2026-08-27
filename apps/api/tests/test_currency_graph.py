@@ -14,7 +14,6 @@ from app.tools.flights import FlightTool
 from app.tools.hotels import HotelTool
 from app.tools.restaurants import RestaurantTool
 from app.tools.weather import WeatherTool
-from mcp_tools.currency.schemas import CurrencyDataStatus
 from mcp_tools.flights.cache import FlightCache
 from mcp_tools.flights.service import FlightService
 
@@ -39,7 +38,7 @@ def fake_usd_flight_tool() -> FlightTool:
     )
 
 
-def test_complete_request_stores_currency_conversion_for_same_currency(
+def test_complete_request_skips_conversion_when_all_amounts_match_budget_currency(
     fake_adapter: FakeLLMAdapter,
     fake_weather_tool: WeatherTool,
     fake_flight_tool: FlightTool,
@@ -71,15 +70,13 @@ def test_complete_request_stores_currency_conversion_for_same_currency(
     assert result.status == GraphStatus.COMPLETE
     assert result.flight_search is not None
     assert result.flight_search.offers[0].price_currency == "INR"
-    assert result.currency_conversion is not None
-    assert result.currency_conversion.base_currency == "INR"
-    assert result.currency_conversion.quote_currency == "INR"
-    assert result.currency_conversion.rate == Decimal("1")
-    assert result.currency_conversion.converted_amount == Decimal("45000.00")
-    assert result.currency_conversion.source == "deterministic"
-    assert result.currency_conversion.data_status == CurrencyDataStatus.LIVE
-    assert result.currency_tool_metadata is not None
-    assert result.currency_tool_metadata.tool_name == "convert_currency"
+    assert result.hotel_search is not None
+    assert result.hotel_search.hotels[0].total_price is not None
+    assert result.hotel_search.hotels[0].total_price.currency == "INR"
+    # Identity INR→INR conversion is skipped; amounts already match trip currency.
+    assert result.currency_conversion is None
+    assert result.budget_result is not None
+    assert result.budget_result.currency == "INR"
 
 
 def test_complete_request_converts_foreign_flight_price_without_overwriting_source(

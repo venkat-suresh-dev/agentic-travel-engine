@@ -6,12 +6,17 @@ import { FailureBanner } from "@/components/planner/failure-banner";
 import { LivePlanningState } from "@/components/planner/live-planning-state";
 import { PlannerWorkspace } from "@/components/planner/planner-workspace";
 import {
+  useClientReady,
   usePendingPlannerStart,
   usePlannerErrorMessage,
   usePlannerSession,
   useSendPlannerMessage,
 } from "@/lib/planner/hooks";
-import { loadPendingPlannerStart } from "@/lib/planner/storage";
+import { resolvePlannerRunView } from "@/lib/planner/run-view";
+import {
+  loadPendingPlannerStart,
+  loadPlannerSession,
+} from "@/lib/planner/storage";
 import { useAgentRunStream } from "@/lib/planner/use-agent-run-stream";
 
 export default function PlannerRunPage({
@@ -20,10 +25,22 @@ export default function PlannerRunPage({
   params: Promise<{ runId: string }>;
 }) {
   const { runId } = use(params);
-  const pendingStart = loadPendingPlannerStart(runId);
+  return <PlannerRunScreen runId={runId} />;
+}
+
+export function PlannerRunScreen({ runId }: { runId: string }) {
+  const clientReady = useClientReady();
+  const pendingStart = clientReady ? loadPendingPlannerStart(runId) : null;
+  const placeholderData =
+    clientReady && !pendingStart
+      ? (loadPlannerSession(runId) ?? undefined)
+      : undefined;
   const pendingPlannerStart = usePendingPlannerStart(runId);
   const { data: session, isLoading, isError, error, isFetching } =
-    usePlannerSession(runId, { enabled: !pendingStart });
+    usePlannerSession(runId, {
+      enabled: clientReady && !pendingStart,
+      placeholderData,
+    });
   const sendMessage = useSendPlannerMessage(runId);
   const isStarting = pendingPlannerStart.isPending;
   const isMutating = sendMessage.isPending || isStarting;
@@ -35,9 +52,24 @@ export default function PlannerRunPage({
   const mutationErrorMessage = usePlannerErrorMessage(
     sendMessage.error ?? pendingPlannerStart.error,
   );
+  const view = resolvePlannerRunView({
+    session,
+    isError,
+    isLoading,
+    isStarting,
+    isFetching,
+    isMutating,
+    clientReady,
+    hasPendingStart: Boolean(pendingStart),
+    hasMutationError: sendMessage.isError || pendingPlannerStart.isError,
+  });
 
   useEffect(() => {
-    if (pendingStart && !pendingPlannerStart.isPending && !pendingPlannerStart.isSuccess) {
+    if (
+      pendingStart &&
+      !pendingPlannerStart.isPending &&
+      !pendingPlannerStart.isSuccess
+    ) {
       void pendingPlannerStart.mutateAsync();
     }
   }, [pendingStart, pendingPlannerStart]);
@@ -53,7 +85,7 @@ export default function PlannerRunPage({
     await sendMessage.mutateAsync(message);
   }
 
-  if (isError && !session) {
+  if (view.kind === "error") {
     return (
       <FailureBanner
         title="This planning session is unavailable"
@@ -62,15 +94,17 @@ export default function PlannerRunPage({
     );
   }
 
-  if ((isLoading || isStarting) && !session) {
+  if (view.kind === "planning") {
     return (
-      <div className="mx-auto max-w-2xl">
-        <LivePlanningState execution={execution} mode="initial" />
+      <div className="mx-auto flex min-h-0 flex-1 items-start">
+        <div className="w-full max-w-2xl">
+          <LivePlanningState execution={execution} mode="initial" />
+        </div>
       </div>
     );
   }
 
-  if (!session) {
+  if (view.kind === "unavailable") {
     return (
       <FailureBanner
         title="This planning session is unavailable"
@@ -80,24 +114,30 @@ export default function PlannerRunPage({
   }
 
   return (
-    <div className="space-y-4">
-      {isFetching && !isMutating ? (
-        <p className="text-xs uppercase tracking-[0.16em] text-[var(--foreground-muted)]">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {view.showRefreshIndicator ? (
+        <p
+          data-testid="planner-refresh-status"
+          className="text-xs uppercase tracking-[0.16em] text-[var(--foreground-muted)]"
+        >
           Refreshing trip state…
         </p>
       ) : null}
-      {sendMessage.isError || pendingPlannerStart.isError ? (
+      {view.showMutationError ? (
         <p role="alert" className="text-sm text-[var(--budget-over-fg)]">
           {mutationErrorMessage}
         </p>
       ) : null}
-      <PlannerWorkspace
-        session={session}
-        isMutating={isMutating}
-        planningMode={planningMode}
-        execution={execution}
-        onSendMessage={handleSendMessage}
-      />
+      {session ? (
+        <PlannerWorkspace
+          session={session}
+          isMutating={isMutating}
+          planningMode={planningMode}
+          execution={execution}
+          onSendMessage={handleSendMessage}
+          className="min-h-0 flex-1"
+        />
+      ) : null}
     </div>
   );
 }

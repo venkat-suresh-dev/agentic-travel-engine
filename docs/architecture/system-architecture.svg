@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="sys-title sys-desc">
+  <title id="sys-title">System Architecture</title>
+  <desc id="sys-desc">Browser to Next.js to FastAPI to LangGraph with PostgreSQL and external providers, returning via SSE to the planner UI.</desc>
+
+  <rect width="1200" height="720" fill="#f4efe6"/>
+
+  <text x="48" y="52" font-family="Georgia, Times New Roman, serif" font-size="26" font-weight="600" fill="#1f2421">System Architecture</text>
+  <text x="48" y="80" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" fill="#8b8173">Browser -&gt; Next.js -&gt; FastAPI -&gt; LangGraph -&gt; SSE -&gt; Planner UI</text>
+
+  <!-- center column -->
+  <rect x="470" y="110" width="260" height="56" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="136" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1f2421">Browser</text>
+  <text x="600" y="156" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Clerk session</text>
+
+  <line x1="600" y1="166" x2="600" y2="192" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,192 596,184 604,184" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="470" y="192" width="260" height="56" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="218" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1f2421">Next.js Planner</text>
+  <text x="600" y="238" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Planner UI + SSE client</text>
+
+  <line x1="600" y1="248" x2="600" y2="274" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,274 596,266 604,266" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="470" y="274" width="260" height="56" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="300" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1f2421">FastAPI</text>
+  <text x="600" y="320" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Auth, agent runs, proxy</text>
+
+  <line x1="600" y1="330" x2="600" y2="356" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,356 596,348 604,348" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="390" y="356" width="420" height="230" rx="18" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <rect x="390" y="356" width="420" height="38" rx="18" fill="#0d5c63"/>
+  <rect x="390" y="376" width="420" height="18" fill="#0d5c63"/>
+  <text x="600" y="382" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#fbf8f2">LangGraph</text>
+  <text x="410" y="418" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">Requirement Extraction</text>
+  <text x="410" y="442" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">RAG</text>
+  <text x="410" y="466" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">Parallel Tools</text>
+  <text x="620" y="418" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">Budget</text>
+  <text x="620" y="442" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">Itinerary</text>
+  <text x="620" y="466" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" fill="#1f2421">Critic</text>
+  <text x="410" y="500" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Selective modification path</text>
+  <text x="410" y="522" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Failure isolation + provenance</text>
+
+  <line x1="600" y1="586" x2="600" y2="612" stroke="#0d5c63" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="600,612 596,604 604,604" fill="#0d5c63" opacity="0.6"/>
+
+  <rect x="470" y="612" width="260" height="48" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="600" y="636" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="600" fill="#1f2421">SSE</text>
+  <text x="600" y="654" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">Execution events to Planner UI</text>
+
+  <!-- PostgreSQL -->
+  <rect x="80" y="400" width="220" height="120" rx="14" fill="#fbf8f2" stroke="#d9d0c4" stroke-width="1.5"/>
+  <text x="190" y="430" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1f2421">PostgreSQL</text>
+  <text x="190" y="454" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">users, trips</text>
+  <text x="190" y="474" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12" fill="#8b8173">pgvector RAG</text>
+  <line x1="300" y1="460" x2="390" y2="460" stroke="#8b8173" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.7"/>
+  <polygon points="390,460 382,456 382,464" fill="#8b8173" opacity="0.7"/>
+
+  <!-- External providers -->
+  <rect x="900" y="400" width="220" height="120" rx="14" fill="#fbf8f2" stroke="#0d5c63" stroke-width="1.5"/>
+  <text x="1010" y="426" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="600" fill="#0d5c63">Provider Boundary</text>
+  <text x="1010" y="448" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">Groq, Gemini, SerpApi</text>
+  <text x="1010" y="466" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">StayingAPI, Geoapify</text>
+  <text x="1010" y="484" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#8b8173">ORS, Open-Meteo, Frankfurter</text>
+  <line x1="810" y1="460" x2="900" y2="460" stroke="#8b8173" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.7"/>
+  <polygon points="900,460 892,456 892,464" fill="#8b8173" opacity="0.7"/>
+</svg>

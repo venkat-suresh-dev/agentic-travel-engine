@@ -3,83 +3,145 @@
 import type { BudgetSummary } from "@agentic-travel-engine/shared-types";
 import { motion, useReducedMotion } from "framer-motion";
 
-import { Badge } from "@/components/ui/badge";
 import {
+  budgetOverBy,
+  budgetSpentPercent,
   formatMoney,
   getBudgetHealth,
   type BudgetHealth,
 } from "@/lib/planner/format";
+import {
+  budgetCategoryLabel,
+  budgetExclusionSummary,
+  excludedBudgetCategories,
+} from "@/lib/planner/logistics";
+import type { BudgetRecoveryActions } from "@/lib/planner/suggestions";
 import { cn } from "@/lib/utils";
 
 interface BudgetPanelProps {
   budget: BudgetSummary;
   variant?: "full" | "compact" | "inline";
+  recovery?: BudgetRecoveryActions | null;
+  onApplySuggestion?: (text: string) => void;
+  /** Compact over-budget callout without category table (mobile above-fold). */
+  mobileRecoveryOnly?: boolean;
+  /** Skip headline totals when already shown in trip header. */
+  hideSummary?: boolean;
   className?: string;
 }
 
-const HEALTH_COPY: Record<
-  BudgetHealth,
-  { label: string; variant: "success" | "warning" | "danger" | "default" }
-> = {
-  under: { label: "Under budget", variant: "success" },
-  near: { label: "Near budget", variant: "warning" },
-  exact: { label: "At budget", variant: "default" },
-  over: { label: "Over budget", variant: "danger" },
-};
-
-function BudgetProgress({
-  budget,
+function BudgetBar({
   health,
   spentRatio,
-  className,
 }: {
-  budget: BudgetSummary;
   health: BudgetHealth;
   spentRatio: number;
-  className?: string;
 }) {
   const reduceMotion = useReducedMotion();
-
   return (
-    <div className={className}>
-      <div className="mb-1.5 flex justify-between text-[11px] text-[var(--foreground-muted)]">
-        <span>Budget used</span>
-        <span>{spentRatio.toFixed(0)}%</span>
-      </div>
-      <div
-        className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]"
-        role="progressbar"
-        aria-valuenow={spentRatio}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Budget utilization"
-      >
-        <motion.div
-          className={cn(
-            "h-full rounded-full",
-            health === "over"
-              ? "bg-[var(--budget-over-fg)]"
-              : health === "near"
-                ? "bg-[var(--budget-near-fg)]"
-                : "bg-[var(--accent)]",
-          )}
-          initial={reduceMotion ? { width: `${spentRatio}%` } : { width: 0 }}
-          animate={{ width: `${spentRatio}%` }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        />
-      </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-        <div className="flex justify-between gap-2">
-          <dt className="text-[var(--foreground-muted)]">Variance</dt>
-          <dd className="font-medium">{formatMoney(budget.variance, budget.currency)}</dd>
-        </div>
-        <div className="flex justify-between gap-2">
-          <dt className="text-[var(--foreground-muted)]">Status</dt>
-          <dd className="font-medium">
-            {budget.budget_exceeded ? "Exceeded" : "Within limit"}
+    <div
+      className="relative h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]"
+      role="progressbar"
+      aria-valuenow={Math.round(spentRatio)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Budget utilization"
+    >
+      <motion.div
+        className={cn(
+          "h-full rounded-full",
+          health === "over"
+            ? "bg-[var(--budget-over-fg)]"
+            : health === "near"
+              ? "bg-[var(--budget-near-fg)]"
+              : "bg-[var(--accent)]",
+        )}
+        initial={reduceMotion ? { width: `${spentRatio}%` } : { width: 0 }}
+        animate={{ width: `${spentRatio}%` }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+      />
+    </div>
+  );
+}
+
+function CategoryLines({ budget }: { budget: BudgetSummary }) {
+  const lines = (budget.categories ?? []).filter(
+    (line) => line.included_in_total && line.amount !== null,
+  );
+  const excluded = excludedBudgetCategories(budget);
+  if (lines.length === 0 && excluded.length === 0) {
+    return null;
+  }
+  return (
+    <dl className="mt-4 space-y-2">
+      {lines.map((line) => (
+        <div key={line.category} className="flex items-baseline justify-between gap-3">
+          <dt className="text-sm text-[var(--foreground-secondary)]">
+            {budgetCategoryLabel(line.category)}
+          </dt>
+          <dd className="text-sm tabular-nums text-[var(--foreground)]">
+            {formatMoney(line.amount ?? 0, line.currency)}
           </dd>
         </div>
-      </dl>
+      ))}
+      {excluded.map((line) => (
+        <div
+          key={`excluded-${line.category}`}
+          className="flex items-baseline justify-between gap-3"
+        >
+          <dt className="text-sm text-[var(--foreground-secondary)]">
+            {budgetCategoryLabel(line.category)}
+          </dt>
+          <dd className="text-sm text-[var(--foreground-muted)]">Excluded</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ExclusionNote({ budget }: { budget: BudgetSummary }) {
+  const summary = budgetExclusionSummary(budget);
+  if (!summary) {
+    return null;
+  }
+  return (
+    <p className="mt-2 text-xs leading-snug text-[var(--foreground-muted)]">{summary}</p>
+  );
+}
+
+function OverBudgetActions({
+  recovery,
+  onApplySuggestion,
+}: {
+  recovery: BudgetRecoveryActions;
+  onApplySuggestion?: (text: string) => void;
+}) {
+  return (
+    <div className="mt-4 space-y-3">
+      <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+        {recovery.explanation}
+      </p>
+      {onApplySuggestion ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            onClick={() => onApplySuggestion(recovery.primary)}
+          >
+            {recovery.primary}
+          </button>
+          {recovery.secondary.map((action) => (
+            <button
+              key={action}
+              type="button"
+              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm text-[var(--foreground-secondary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              onClick={() => onApplySuggestion(action)}
+            >
+              {action}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -87,150 +149,141 @@ function BudgetProgress({
 export function BudgetPanel({
   budget,
   variant = "full",
+  recovery = null,
+  onApplySuggestion,
+  mobileRecoveryOnly = false,
+  hideSummary = false,
   className,
 }: BudgetPanelProps) {
   const reduceMotion = useReducedMotion();
   const health = getBudgetHealth(budget);
-  const healthMeta = HEALTH_COPY[health];
-  const spentRatio = Math.min(
-    100,
-    Math.max(0, (Number(budget.total_cost) / Number(budget.budget_amount)) * 100),
-  );
+  const spentRatio = budgetSpentPercent(budget);
+  const overBy = budgetOverBy(budget);
+  const exclusion = budgetExclusionSummary(budget);
+  const isOver = health === "over";
 
-  if (variant === "inline") {
+  if (mobileRecoveryOnly && isOver && recovery) {
     return (
       <section
         className={cn(
-          "flex items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3",
+          "rounded-xl bg-[var(--budget-over-bg)]/40 px-4 py-3",
           className,
         )}
-        aria-label="Budget summary"
+        aria-label="Budget recovery"
       >
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-            Trip estimate
-          </p>
-          <p className="font-display text-xl text-[var(--foreground)]">
-            {formatMoney(budget.total_cost, budget.currency)}
-            <span className="ml-1.5 text-sm font-normal text-[var(--foreground-muted)]">
-              / {formatMoney(budget.budget_amount, budget.currency)}
-            </span>
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <p className="text-sm font-medium text-[var(--foreground-secondary)]">
-            {formatMoney(budget.remaining, budget.currency)} left
-          </p>
-          <Badge variant={healthMeta.variant}>{healthMeta.label}</Badge>
-        </div>
+        <p className="text-sm font-medium text-[var(--budget-over-fg)]">
+          Over by {formatMoney(overBy, budget.currency)}
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--foreground-secondary)]">
+          {recovery.explanation}
+        </p>
+        {onApplySuggestion ? (
+          <button
+            type="button"
+            className="mt-2 text-sm font-medium text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            onClick={() => onApplySuggestion(recovery.primary)}
+          >
+            {recovery.primary} →
+          </button>
+        ) : null}
       </section>
     );
   }
 
-  if (variant === "compact") {
+  if (variant === "inline") {
     return (
       <section
-        className={cn(
-          "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4",
-          className,
-        )}
-        aria-labelledby="budget-heading-compact"
+        className={cn("flex items-end justify-between gap-4 py-1", className)}
+        aria-label="Budget summary"
       >
-        <div className="flex items-start justify-between gap-2">
-          <p
-            id="budget-heading-compact"
-            className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--foreground-muted)]"
-          >
-            Budget
+        <div className="min-w-0">
+          <p className="text-xs text-[var(--foreground-muted)]">Trip budget</p>
+          <p className="font-display text-xl leading-none text-[var(--foreground)]">
+            {formatMoney(budget.total_cost, budget.currency)}
+            <span className="ml-1.5 font-sans text-sm font-normal text-[var(--foreground-muted)]">
+              of {formatMoney(budget.budget_amount, budget.currency)}
+            </span>
           </p>
-          <Badge variant={healthMeta.variant}>{healthMeta.label}</Badge>
+          {exclusion ? (
+            <p className="mt-1 text-xs text-[var(--foreground-muted)]">{exclusion}</p>
+          ) : null}
         </div>
-        <motion.p
-          key={budget.total_cost}
-          className="mt-2 font-display text-3xl leading-none text-[var(--foreground)]"
-          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
+        <p
+          className={cn(
+            "text-sm tabular-nums",
+            isOver
+              ? "font-medium text-[var(--budget-over-fg)]"
+              : "text-[var(--foreground-secondary)]",
+          )}
         >
-          {formatMoney(budget.total_cost, budget.currency)}
-        </motion.p>
-        <p className="mt-1 text-xs text-[var(--foreground-secondary)]">
-          of {formatMoney(budget.budget_amount, budget.currency)} ·{" "}
-          {formatMoney(budget.remaining, budget.currency)} remaining
+          {isOver
+            ? `Over by ${formatMoney(overBy, budget.currency)}`
+            : `${formatMoney(budget.remaining, budget.currency)} remaining`}
         </p>
-        <BudgetProgress
-          budget={budget}
-          health={health}
-          spentRatio={spentRatio}
-          className="mt-4"
-        />
       </section>
     );
   }
 
   return (
     <section
-      className={cn(
-        "rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]",
-        className,
-      )}
-      aria-labelledby="budget-heading"
+      className={cn(className)}
+      aria-labelledby={
+        variant === "compact" ? "budget-heading-compact" : "budget-heading"
+      }
+      aria-label={variant === "compact" ? "Budget summary" : undefined}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
-            Budget intelligence
+      <h2
+        id={variant === "compact" ? "budget-heading-compact" : "budget-heading"}
+        className="text-xs text-[var(--foreground-muted)]"
+      >
+        Trip budget
+      </h2>
+      {!hideSummary ? (
+        <>
+          <motion.p
+            key={budget.total_cost}
+            className="mt-2 font-display text-[1.75rem] leading-none tabular-nums text-[var(--foreground)]"
+            initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {formatMoney(budget.total_cost, budget.currency)}
+          </motion.p>
+          <p className="mt-1 text-sm text-[var(--foreground-secondary)]">
+            of {formatMoney(budget.budget_amount, budget.currency)}
           </p>
-          <h2 id="budget-heading" className="mt-2 font-display text-2xl">
-            How your budget is tracking
-          </h2>
-        </div>
-        <Badge variant={healthMeta.variant}>{healthMeta.label}</Badge>
+        </>
+      ) : null}
+
+      <div className={hideSummary ? "mt-2" : "mt-3"}>
+        <BudgetBar health={health} spentRatio={isOver ? 100 : spentRatio} />
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm text-[var(--foreground-muted)]">Total trip estimate</p>
-            <motion.p
-              key={budget.total_cost}
-              className="font-display text-4xl text-[var(--foreground)]"
-              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {formatMoney(budget.total_cost, budget.currency)}
-            </motion.p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-[var(--surface-elevated)] p-3 ring-1 ring-[var(--border)]">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                Budget
-              </p>
-              <p className="mt-1 text-lg font-medium">
-                {formatMoney(budget.budget_amount, budget.currency)}
-              </p>
-            </div>
-            <div className="rounded-xl bg-[var(--surface-elevated)] p-3 ring-1 ring-[var(--border)]">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-                Remaining
-              </p>
-              <p className="mt-1 text-lg font-medium">
-                {formatMoney(budget.remaining, budget.currency)}
-              </p>
-            </div>
-          </div>
-          <BudgetProgress budget={budget} health={health} spentRatio={spentRatio} />
-        </div>
+      {isOver ? (
+        <p className="mt-2 text-sm font-medium tabular-nums text-[var(--budget-over-fg)]">
+          Over by {formatMoney(overBy, budget.currency)}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm tabular-nums text-[var(--foreground)]">
+          {formatMoney(budget.remaining, budget.currency)} remaining
+        </p>
+      )}
 
-        <div className="rounded-xl bg-[var(--surface-elevated)] p-4 ring-1 ring-[var(--border)]">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
-            Authoritative totals
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--foreground-secondary)]">
-            Budget figures come from the backend engine. The frontend never
-            recomputes totals.
-          </p>
-        </div>
-      </div>
+      {isOver && recovery ? (
+        <OverBudgetActions recovery={recovery} onApplySuggestion={onApplySuggestion} />
+      ) : null}
+
+      <ExclusionNote budget={budget} />
+      {variant !== "compact" || !isOver ? (
+        hideSummary ? null : <CategoryLines budget={budget} />
+      ) : null}
+      {variant === "full" ? (
+        <dl className="mt-4 space-y-1 text-xs text-[var(--foreground-muted)]">
+          <div className="flex justify-between gap-3">
+            <dt>Variance</dt>
+            <dd className="tabular-nums font-mono">{formatMoney(budget.variance, budget.currency)}</dd>
+          </div>
+        </dl>
+      ) : null}
     </section>
   );
 }

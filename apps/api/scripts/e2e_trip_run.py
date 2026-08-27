@@ -58,9 +58,19 @@ def main() -> int:
             len(result.itinerary_build_result.itinerary.days),
         )
     if result.critic_result:
-        print("critic_passed:", result.critic_result.passed)
+        print(
+            "critic_valid:",
+            result.critic_result.valid,
+            "issues:",
+            len(result.critic_result.issues),
+            "warnings:",
+            len(result.critic_result.warnings),
+        )
     if result.tool_orchestration_summary:
-        print("tool_summary_status:", result.tool_orchestration_summary.aggregate_status)
+        print(
+            "tool_summary_status:",
+            result.tool_orchestration_summary.aggregate_run_status,
+        )
 
     ok = (
         result.itinerary_build_result is not None

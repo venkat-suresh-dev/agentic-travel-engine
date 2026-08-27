@@ -13,6 +13,7 @@ const badgeVariants = cva(
         cached: "bg-[var(--status-cached-bg)] text-[var(--status-cached-fg)]",
         estimated: "bg-[var(--status-estimated-bg)] text-[var(--status-estimated-fg)]",
         free: "bg-[var(--status-free-bg)] text-[var(--status-free-fg)]",
+        reference: "bg-[var(--status-cached-bg)] text-[var(--status-cached-fg)]",
         unavailable: "bg-[var(--status-unavailable-bg)] text-[var(--status-unavailable-fg)]",
         success: "bg-[var(--budget-under-bg)] text-[var(--budget-under-fg)]",
         warning: "bg-[var(--budget-near-bg)] text-[var(--budget-near-fg)]",

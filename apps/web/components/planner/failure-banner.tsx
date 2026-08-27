@@ -6,6 +6,7 @@ interface FailureBannerProps {
   title: string;
   message: string;
   preserved?: boolean;
+  detail?: string;
   className?: string;
 }
 
@@ -13,19 +14,17 @@ export function FailureBanner({
   title,
   message,
   preserved = false,
+  detail,
   className,
 }: FailureBannerProps) {
   return (
     <div
       role="alert"
-      className={cn(
-        "rounded-2xl border border-[var(--budget-over-fg)]/20 bg-[var(--budget-over-bg)] px-5 py-4",
-        className,
-      )}
+      className={cn("border-l-2 border-[var(--budget-over-fg)] py-2 pl-3", className)}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <AlertTriangle
-          className="mt-0.5 h-5 w-5 shrink-0 text-[var(--budget-over-fg)]"
+          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--budget-over-fg)]"
           aria-hidden
         />
         <div>
@@ -33,6 +32,9 @@ export function FailureBanner({
           <p className="mt-1 text-sm leading-relaxed text-[var(--foreground-secondary)]">
             {message}
           </p>
+          {detail ? (
+            <p className="mt-2 text-sm text-[var(--foreground)]">{detail}</p>
+          ) : null}
           {preserved ? (
             <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
               Your previous itinerary is still intact.

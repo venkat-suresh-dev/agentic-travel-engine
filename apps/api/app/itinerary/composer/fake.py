@@ -1,20 +1,26 @@
-"""Deterministic fake itinerary composer for offline tests."""
+"""Deterministic diverse itinerary composer for production and tests."""
 
 from __future__ import annotations
 
 from app.itinerary.assumptions import SchedulingAssumptions
 from app.itinerary.catalog import GroundedCatalog
-from app.itinerary.clustering import select_weather_aware_attractions
 from app.itinerary.context import ItineraryBuildContext
 from app.itinerary.critic.schemas import CriticIssue, CriticIssueCode
-from app.itinerary.schemas import CandidateDayPlan, ItinerarySelectionCandidate
+from app.itinerary.diversity.selection import compose_diverse_itinerary
+from app.itinerary.diversity.themes import DayTheme
+from app.itinerary.schemas import ItinerarySelectionCandidate
 
 
 class FakeItineraryComposer:
-    """Select grounded attractions/restaurants deterministically."""
+    """Select grounded attractions/restaurants with trip-wide diversity."""
 
     def __init__(self, assumptions: SchedulingAssumptions | None = None) -> None:
         self._assumptions = assumptions or SchedulingAssumptions()
+        self._last_themes: dict[int, DayTheme] = {}
+
+    @property
+    def last_themes(self) -> dict[int, DayTheme]:
+        return self._last_themes
 
     def compose(
         self,
@@ -22,63 +28,25 @@ class FakeItineraryComposer:
         context: ItineraryBuildContext,
         catalog: GroundedCatalog,
     ) -> ItinerarySelectionCandidate:
-        duration = context.trip_request.duration_days or 1
-        attraction_ids = catalog.attraction_ids()
-        restaurant_ids = catalog.restaurant_ids()
-        if not restaurant_ids:
-            raise ValueError("at least one grounded restaurant is required")
-
-        feedback_by_day = _feedback_by_day(context)
-        days: list[CandidateDayPlan] = []
-        for day_number in range(1, duration + 1):
-            day_feedback = feedback_by_day.get(day_number, [])
-            selected_attractions = select_weather_aware_attractions(
-                attraction_ids,
-                day_number=day_number,
-                catalog=catalog,
-                assumptions=self._assumptions,
-                max_items=1,
-            )
-            if _needs_indoor(day_feedback):
-                indoor_ids = [
-                    attraction_id
-                    for attraction_id in attraction_ids
-                    if catalog.attractions[attraction_id].is_indoor
-                ]
-                if indoor_ids:
-                    selected_attractions = [indoor_ids[0]]
-
-            if not selected_attractions and attraction_ids:
-                selected_attractions = [
-                    attraction_ids[(day_number - 1) % len(attraction_ids)]
-                ]
-
-            restaurant_id = restaurant_ids[(day_number - 1) % len(restaurant_ids)]
-            if any(
-                issue.code == CriticIssueCode.MISSING_MEAL for issue in day_feedback
-            ):
-                restaurant_id = restaurant_ids[0]
-
-            days.append(
-                CandidateDayPlan(
-                    day_number=day_number,
-                    attraction_source_ids=selected_attractions,
-                    restaurant_source_id=restaurant_id,
-                )
-            )
-        return ItinerarySelectionCandidate(days=days)
+        indoor_days = _indoor_override_days(context)
+        candidate, themes = compose_diverse_itinerary(
+            context=context,
+            catalog=catalog,
+            assumptions=self._assumptions,
+            indoor_override_days=indoor_days,
+        )
+        self._last_themes = themes
+        return candidate
 
 
-def _feedback_by_day(context: ItineraryBuildContext) -> dict[int, list[CriticIssue]]:
+def _indoor_override_days(context: ItineraryBuildContext) -> set[int]:
     grouped: dict[int, list[CriticIssue]] = {}
     for issue in context.critic_feedback:
         if issue.day_number is None:
             continue
         grouped.setdefault(issue.day_number, []).append(issue)
-    return grouped
-
-
-def _needs_indoor(day_feedback: list[CriticIssue]) -> bool:
-    return any(
-        issue.code == CriticIssueCode.WEATHER_RULE_VIOLATION for issue in day_feedback
-    )
+    return {
+        day_number
+        for day_number, issues in grouped.items()
+        if any(issue.code == CriticIssueCode.WEATHER_RULE_VIOLATION for issue in issues)
+    }

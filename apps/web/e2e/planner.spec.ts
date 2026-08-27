@@ -84,7 +84,7 @@ test.describe("Planner core flow", () => {
     await page.goto("/planner");
     await expect(
       page.getByRole("heading", {
-        name: /plan a trip without the spreadsheet/i,
+        name: /describe your trip/i,
       }),
     ).toBeVisible();
     await expect(
@@ -104,8 +104,11 @@ test.describe("Planner core flow", () => {
     await page.goto(`/planner/${completeRunFixture.run_id}`);
     await responsePromise;
     await expect(page.getByRole("heading", { name: "Dubai", exact: true })).toBeVisible();
-    await expect(page.getByText(/your day-by-day plan/i)).toBeVisible();
-    await expect(page.getByText(/what would you like to change/i)).toBeVisible();
+    await expect(page.getByRole("tab", { name: /day 01/i })).toBeVisible();
+    await expect(page.getByText(/refine your trip/i)).toBeVisible();
+    await expect(page.getByText(/trip essentials/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /flight details/i })).toBeVisible();
+    await expect(page.getByText("Downtown Hotel")).toBeVisible();
   });
 
   test("shows unavailable state when GET returns 404", async ({ page }) => {
@@ -175,7 +178,7 @@ test.describe("Planner responsive layout", () => {
       await page.goto(`/planner/${completeRunFixture.run_id}`);
       await responsePromise;
       await expect(page.getByRole("heading", { name: "Dubai", exact: true })).toBeVisible();
-      await expect(page.getByText(/your day-by-day plan/i)).toBeVisible();
+      await expect(page.getByRole("tab", { name: /day 01/i })).toBeVisible();
 
       const overflow = await page.evaluate(() => {
         const root = document.documentElement;

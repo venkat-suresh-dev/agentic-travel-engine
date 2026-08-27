@@ -18,5 +18,8 @@ describe("clerkAppearance", () => {
     expect(clerkAppearance.elements?.card).toContain(
       "bg-[var(--surface-elevated)]",
     );
+    expect(clerkAppearance.elements?.userButtonAvatarBox).toContain(
+      "bg-[var(--accent)]",
+    );
   });
 });

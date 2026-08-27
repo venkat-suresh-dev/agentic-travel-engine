@@ -27,7 +27,13 @@ DEFAULT_GEOAPIFY_BASE_URL = "https://api.geoapify.com"
 PLACES_PATH = "/v2/places"
 
 _RESTAURANT_CATEGORIES = "catering.restaurant"
-_ATTRACTION_CATEGORIES = "tourism"
+_ATTRACTION_CATEGORY_QUERIES: tuple[str, ...] = (
+    "tourism",
+    "entertainment.museum",
+    "leisure.park",
+    "heritage",
+    "entertainment.culture",
+)
 
 
 class GeoapifyPlacesProvider:
@@ -71,20 +77,30 @@ class GeoapifyPlacesProvider:
         self,
         request: AttractionSearchRequest,
     ) -> list[AttractionPlace]:
-        params: dict[str, str | int] = {
-            "categories": _ATTRACTION_CATEGORIES,
-            "filter": (
-                f"circle:{request.location.longitude},{request.location.latitude},"
-                f"{request.radius_meters}"
-            ),
-            "bias": (
-                f"proximity:{request.location.longitude},{request.location.latitude}"
-            ),
-            "limit": request.max_results,
-            "apiKey": self._api_key,
-        }
-        payload = self._get(PLACES_PATH, params)
-        return parse_geoapify_attraction_places(payload)
+        merged: dict[str, AttractionPlace] = {}
+        per_query = max(5, request.max_results // len(_ATTRACTION_CATEGORY_QUERIES) + 1)
+        for categories in _ATTRACTION_CATEGORY_QUERIES:
+            if len(merged) >= request.max_results:
+                break
+            params: dict[str, str | int] = {
+                "categories": categories,
+                "filter": (
+                    f"circle:{request.location.longitude},{request.location.latitude},"
+                    f"{request.radius_meters}"
+                ),
+                "bias": (
+                    f"proximity:{request.location.longitude},{request.location.latitude}"
+                ),
+                "limit": min(per_query, request.max_results - len(merged)),
+                "apiKey": self._api_key,
+            }
+            try:
+                payload = self._get(PLACES_PATH, params)
+            except PlacesProviderError:
+                continue
+            for place in parse_geoapify_attraction_places(payload):
+                merged.setdefault(place.place_id, place)
+        return list(merged.values())[: request.max_results]
 
     def _get(
         self, path: str, params: Mapping[str, str | int | float | bool]

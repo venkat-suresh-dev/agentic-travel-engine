@@ -10,7 +10,7 @@ from mcp_tools.currency.schemas import (
     quantize_money,
 )
 from mcp_tools.flights.schemas import FlightDataStatus, FlightSearchResult
-from mcp_tools.hotels.schemas import HotelDataStatus, HotelSearchResult
+from mcp_tools.hotels.schemas import HotelDataStatus, HotelOffer, HotelSearchResult
 
 from app.budget.assumptions import BudgetAssumptions
 from app.budget.exceptions import BudgetValidationError
@@ -31,6 +31,7 @@ def build_budget_inputs(
     currency_conversion: CurrencyConversionResult | None = None,
     assumptions: BudgetAssumptions | None = None,
     explicit_activity_cost: Decimal | None = None,
+    selected_hotel_id: str | None = None,
 ) -> BudgetInputs:
     """Map normalized tool facts and assumptions into explicit budget inputs."""
     if trip_request.travelers is None or trip_request.travelers < 1:
@@ -55,6 +56,7 @@ def build_budget_inputs(
             hotel_search=hotel_search,
             currency_conversion=currency_conversion,
             budget_currency=budget_currency,
+            selected_hotel_id=selected_hotel_id,
         ),
         _build_food_category(
             assumptions=planning_assumptions,
@@ -117,6 +119,7 @@ def _build_flight_category(
     source_currency = offer.price_currency.upper()
     data_kind = _flight_data_kind(flight_search.data_status)
 
+    # Exact converted amount for the offer that drove the conversion plan.
     if currency_conversion is not None and _conversion_usable(currency_conversion):
         if (
             currency_conversion.base_currency == source_currency
@@ -135,16 +138,28 @@ def _build_flight_category(
                 conversion_note="phase_3f_currency_conversion",
             )
 
-    if source_currency == budget_currency:
+    # Same currency, or apply a reference rate from another offer (e.g. hotel FX).
+    converted, note = _convert_amount(
+        source_amount=source_amount,
+        source_currency=source_currency,
+        budget_currency=budget_currency,
+        currency_conversion=currency_conversion,
+    )
+    if converted is not None:
         return CategoryInput(
             category=BudgetCategory.FLIGHT,
             source_amount=source_amount,
             source_currency=source_currency,
-            budget_amount=quantize_money(source_amount),
+            budget_amount=converted,
             is_estimate=False,
-            basis="provider_lowest_offer",
+            basis=(
+                "provider_lowest_offer_converted"
+                if note is not None
+                else "provider_lowest_offer"
+            ),
             data_kind=data_kind,
             source_offer_id=offer.offer_id,
+            conversion_note=note,
         )
 
     return CategoryInput(
@@ -154,7 +169,10 @@ def _build_flight_category(
         data_kind=PriceDataKind.UNAVAILABLE,
         basis="provider_lowest_offer",
         source_offer_id=offer.offer_id,
-        assumption="No normalized budget-currency conversion available for flight.",
+        assumption=(
+            f"Flight cost not included in {budget_currency} budget "
+            "because currency conversion is unavailable."
+        ),
     )
 
 
@@ -163,6 +181,7 @@ def _build_hotel_category(
     hotel_search: HotelSearchResult | None,
     currency_conversion: CurrencyConversionResult | None,
     budget_currency: str,
+    selected_hotel_id: str | None = None,
 ) -> CategoryInput:
     if hotel_search is None or hotel_search.data_status == HotelDataStatus.UNAVAILABLE:
         return CategoryInput(
@@ -179,10 +198,7 @@ def _build_hotel_category(
             assumption="No hotel offers returned; excluded from total.",
         )
 
-    offer = min(
-        hotel_search.hotels,
-        key=lambda item: item.total_price.amount if item.total_price else Decimal("0"),
-    )
+    offer = _select_hotel_offer(hotel_search.hotels, selected_hotel_id)
     if offer.total_price is None:
         return CategoryInput(
             category=BudgetCategory.HOTEL,
@@ -194,6 +210,25 @@ def _build_hotel_category(
     source_amount = Decimal(str(offer.total_price.amount))
     source_currency = offer.total_price.currency.upper()
     data_kind = _hotel_data_kind(hotel_search.data_status)
+
+    if currency_conversion is not None and _conversion_usable(currency_conversion):
+        if (
+            currency_conversion.base_currency == source_currency
+            and currency_conversion.quote_currency == budget_currency
+            and currency_conversion.source_offer_id == offer.hotel_id
+        ):
+            return CategoryInput(
+                category=BudgetCategory.HOTEL,
+                source_amount=source_amount,
+                source_currency=source_currency,
+                budget_amount=quantize_money(currency_conversion.converted_amount),
+                is_estimate=False,
+                basis="provider_lowest_hotel",
+                data_kind=data_kind,
+                source_offer_id=offer.hotel_id,
+                conversion_note="phase_3f_currency_conversion",
+            )
+
     converted, note = _convert_amount(
         source_amount=source_amount,
         source_currency=source_currency,
@@ -208,7 +243,10 @@ def _build_hotel_category(
             data_kind=PriceDataKind.UNAVAILABLE,
             basis="provider_lowest_hotel",
             source_offer_id=offer.hotel_id,
-            assumption="No exchange rate available for hotel total.",
+            assumption=(
+                f"Hotel cost not included in {budget_currency} budget "
+                "because currency conversion is unavailable."
+            ),
         )
 
     return CategoryInput(
@@ -380,3 +418,16 @@ def _hotel_data_kind(status: HotelDataStatus) -> PriceDataKind:
     if status == HotelDataStatus.CACHED:
         return PriceDataKind.CACHED
     return PriceDataKind.LIVE
+
+
+def _select_hotel_offer(
+    hotels: list[HotelOffer], selected_hotel_id: str | None
+) -> HotelOffer:
+    if selected_hotel_id:
+        for hotel in hotels:
+            if hotel.hotel_id == selected_hotel_id:
+                return hotel
+    return min(
+        hotels,
+        key=lambda item: item.total_price.amount if item.total_price else Decimal("0"),
+    )
